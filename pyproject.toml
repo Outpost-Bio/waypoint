@@ -1,0 +1,15 @@
+[project]
+name = "microbiome-pretrain-benchmark"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "datasets>=4.8.4",
+    "tqdm>=4.66.0",
+    "pyyaml>=6.0.3",
+    "torch>=2.11.0",
+    "transformers>=5.4.0",
+    "accelerate>=1.13.0",
+    "scikit-learn>=1.8.0",
+]

@@ -1,0 +1,14 @@
+# Benchmark fine-tuning configuration
+# Used for all 8 micro-bench tasks
+
+learning_rate: 0.00003
+num_epochs: 1
+batch_size: 64
+warmup_steps: 1000
+weight_decay: 0.001
+patience: 5
+logging_steps: 5
+pooling_strategy: "last_token"
+eval_steps: 400
+filter_unk_taxa: true
+seed: 42
