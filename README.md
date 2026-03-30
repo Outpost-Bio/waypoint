@@ -25,12 +25,38 @@ pip install torch transformers datasets accelerate scikit-learn scipy pandas pya
 Train a GPT2 causal language model on the public pretraining dataset:
 
 ```bash
-# Full pretraining
-python pretrain.py --config configs/pretrain_gpt2_6m.yaml --output_dir outputs/pretrain
+# Full pretraining (6M parameter model, matches MBT-6m-mgm)
+python pretrain.py \
+    --model_config configs/models/gpt2-6m-mgm.yaml \
+    --pretrain_config configs/pretraining/gpt2.yaml \
+    --output_dir outputs/pretrain
+
+# Train a larger model
+python pretrain.py \
+    --model_config configs/models/gpt2-45m.yaml \
+    --pretrain_config configs/pretraining/gpt2.yaml \
+    --output_dir outputs/pretrain_45m
 
 # Quick test with limited samples
-python pretrain.py --config configs/pretrain_gpt2_6m.yaml --output_dir outputs/pretrain --max_samples 1000
+python pretrain.py \
+    --model_config configs/models/gpt2-6m-mgm.yaml \
+    --pretrain_config configs/pretraining/gpt2.yaml \
+    --output_dir outputs/pretrain --max_samples 1000
 ```
+
+Available model configs (in `configs/models/`):
+
+| Config | Layers | Embedding | Heads | ~Params |
+|---|---|---|---|---|
+| `gpt2-6m.yaml` | 8 | 256 | 4 | 6M |
+| `gpt2-6m-mgm.yaml` | 8 | 256 | 8 | 6M |
+| `gpt2-10m.yaml` | 8 | 320 | 5 | 10M |
+| `gpt2-18m.yaml` | 10 | 384 | 6 | 18M |
+| `gpt2-29m.yaml` | 12 | 448 | 7 | 29M |
+| `gpt2-45m.yaml` | 14 | 512 | 8 | 45M |
+| `gpt2-79m.yaml` | 16 | 640 | 10 | 79M |
+| `gpt2-85m-gpt-small.yaml` | 12 | 768 | 12 | 85M |
+| `gpt2-170m.yaml` | 24 | 768 | 12 | 170M |
 
 The script will:
 1. Download the pretraining dataset from `outpost-bio/taxa-pretraining`
@@ -81,8 +107,15 @@ The script will:
 ├── pretrain.py              # Pretraining script
 ├── benchmark.py             # Benchmarking script
 ├── configs/
-│   ├── pretrain_gpt2_6m.yaml   # Model architecture + training hyperparameters
-│   └── benchmark.yaml          # Fine-tuning hyperparameters for benchmarking
+│   ├── models/                    # Model architecture configs (GPT2 6M–170M)
+│   │   ├── gpt2-6m-mgm.yaml
+│   │   ├── gpt2-6m.yaml
+│   │   ├── gpt2-10m.yaml
+│   │   ├── ...
+│   │   └── gpt2-170m.yaml
+│   ├── pretraining/
+│   │   └── gpt2.yaml             # Pretraining hyperparameters
+│   └── benchmark.yaml            # Fine-tuning hyperparameters for benchmarking
 ├── src/
 │   ├── tokenizer.py         # TaxonomicTokenizer (standalone, no private deps)
 │   ├── dataset.py           # Torch datasets for pretraining and benchmarking

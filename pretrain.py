@@ -6,7 +6,10 @@ Downloads data from HuggingFace Hub (outpost-bio/taxa-pretraining), builds a
 TaxonomicTokenizer, and trains with next-token prediction.
 
 Usage:
-    python pretrain.py --config configs/pretrain_gpt2_6m.yaml --output_dir outputs/pretrain
+    python pretrain.py \\
+        --model_config configs/models/gpt2-6m-mgm.yaml \\
+        --pretrain_config configs/pretraining/gpt2.yaml \\
+        --output_dir outputs/pretrain
 """
 
 from __future__ import annotations
@@ -37,9 +40,14 @@ HF_DATASET = "outpost-bio/taxa-pretraining"
 def main():
     parser = argparse.ArgumentParser(description="Pretrain a microbiome language model")
     parser.add_argument(
-        "--config",
-        default="configs/pretrain_gpt2_6m.yaml",
-        help="Path to pretraining config YAML",
+        "--model_config",
+        default="configs/models/gpt2-6m-mgm.yaml",
+        help="Path to model architecture config YAML (in configs/models/)",
+    )
+    parser.add_argument(
+        "--pretrain_config",
+        default="configs/pretraining/gpt2.yaml",
+        help="Path to pretraining hyperparameter config YAML (in configs/pretraining/)",
     )
     parser.add_argument(
         "--output_dir",
@@ -54,11 +62,10 @@ def main():
     )
     args = parser.parse_args()
 
-    with open(args.config) as f:
-        config = yaml.safe_load(f)
-
-    model_cfg = config["model"]
-    train_cfg = config["training"]
+    with open(args.model_config) as f:
+        model_cfg = yaml.safe_load(f)
+    with open(args.pretrain_config) as f:
+        train_cfg = yaml.safe_load(f)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     best_model_dir = output_dir / "best_model"
@@ -198,9 +205,9 @@ def main():
     trainer.save_model(str(best_model_dir))
     print(f"Best model saved to {best_model_dir}")
 
-    # Save config for reproducibility
+    # Save configs for reproducibility
     with open(output_dir / "config.json", "w") as f:
-        json.dump(config, f, indent=2)
+        json.dump({"model": model_cfg, "training": train_cfg}, f, indent=2)
 
     print("Pretraining complete!")
 

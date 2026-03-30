@@ -1,0 +1,5 @@
+model_type: gpt2
+n_positions: 512
+n_embd: 640
+n_layer: 16
+n_head: 10
