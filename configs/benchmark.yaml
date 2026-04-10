@@ -1,5 +1,5 @@
 # Benchmark fine-tuning configuration
-# Used for all 8 micro-bench tasks
+# Used for all 8 Compass tasks
 
 learning_rate: 0.00003
 num_epochs: 1

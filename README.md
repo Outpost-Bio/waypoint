@@ -1,16 +1,10 @@
-# Microbiome Pretrain & Benchmark
+# Pretraining and benchmarking Waypoint models
 
-Minimal, self-contained examples for **pretraining** a transformer language model on microbiome taxonomic abundance data and **benchmarking** it on the [micro-bench](https://huggingface.co/datasets/outpost-bio/micro-bench) suite of 8 downstream tasks.
+Minimal, self-contained examples for **pretraining** a transformer language model on microbiome taxonomic abundance data and **benchmarking** it on the [Compass](https://huggingface.co/datasets/outpost-bio/Compass) suite of 8 downstream tasks.
 
-All data and models are loaded from HuggingFace Hub — no private dependencies or internal infrastructure required.
+All data and models are loaded from HuggingFace Hub.
 
-## Public Artefacts
-
-| Artefact | HuggingFace Hub ID | Description |
-|---|---|---|
-| Pretraining data | `outpost-bio/taxa-pretraining` | 485K microbiome samples from MGnify |
-| Pretrained model | `outpost-bio/MBT-6m-mgm` | GPT2 6M params, genus-rank tokenizer |
-| Benchmark data | `outpost-bio/micro-bench` | 8 tasks across 4 datasets (mgnify-biomes, handuo, mastrorilli, roswall) |
+See the acoompanying paper for details [insert_here]
 
 ## Setup
 
@@ -25,9 +19,9 @@ pip install torch transformers datasets accelerate scikit-learn scipy pandas pya
 Train a GPT2 causal language model on the public pretraining dataset:
 
 ```bash
-# Full pretraining (6M parameter model, matches MBT-6m-mgm)
+# Full pretraining (6M parameter model, matches Waypoint-6m)
 python pretrain.py \
-    --model_config configs/models/gpt2-6m-mgm.yaml \
+    --model_config configs/models/gpt2-6m.yaml \
     --pretrain_config configs/pretraining/gpt2.yaml \
     --output_dir outputs/pretrain
 
@@ -37,11 +31,6 @@ python pretrain.py \
     --pretrain_config configs/pretraining/gpt2.yaml \
     --output_dir outputs/pretrain_45m
 
-# Quick test with limited samples
-python pretrain.py \
-    --model_config configs/models/gpt2-6m-mgm.yaml \
-    --pretrain_config configs/pretraining/gpt2.yaml \
-    --output_dir outputs/pretrain --max_samples 1000
 ```
 
 Available model configs (in `configs/models/`):
@@ -59,7 +48,7 @@ Available model configs (in `configs/models/`):
 | `gpt2-170m.yaml` | 24 | 768 | 12 | 170M |
 
 The script will:
-1. Download the pretraining dataset from `outpost-bio/taxa-pretraining`
+1. Download the pretraining dataset from `outpost-bio/Atlas`
 2. Build a taxonomic tokenizer from the data
 3. Compute per-token abundance statistics for z-score ordering
 4. Train a GPT2 model with next-token prediction and early stopping
@@ -67,17 +56,15 @@ The script will:
 
 ## Benchmarking
 
-Evaluate a pretrained model on all 8 micro-bench tasks:
+Evaluate a pretrained model on all 8 Compass tasks:
 
 ```bash
 # Benchmark the published model from HuggingFace Hub
-python benchmark.py --model outpost-bio/MBT-6m-mgm --output_dir outputs/benchmark
+python benchmark.py --model outpost-bio/Waypoint-6m --output_dir outputs/benchmark
 
 # Benchmark a locally pretrained model
 python benchmark.py --model outputs/pretrain/best_model --output_dir outputs/benchmark
 
-# Run a single task for quick testing
-python benchmark.py --model outpost-bio/MBT-6m-mgm --tasks 1 --output_dir outputs/benchmark
 ```
 
 The script will:

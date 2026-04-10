@@ -2,7 +2,7 @@
 """
 Pretrain a GPT2 causal language model on the public microbiome pretraining dataset.
 
-Downloads data from HuggingFace Hub (outpost-bio/taxa-pretraining), builds a
+Downloads data from HuggingFace Hub (outpost-bio/Atlas), builds a
 TaxonomicTokenizer, and trains with next-token prediction.
 
 Usage:
@@ -33,8 +33,7 @@ from transformers import (
 from src.dataset import MicrobiomePretrainingDataset, compute_token_std_means
 from src.tokenizer import TaxonomicTokenizer
 
-
-HF_DATASET = "outpost-bio/taxa-pretraining"
+HF_DATASET = "outpost-bio/Atlas"
 
 
 def main():
@@ -76,7 +75,7 @@ def main():
     # ------------------------------------------------------------------
     print(f"Loading dataset from {HF_DATASET} ...")
     ds = load_dataset(HF_DATASET, split="pretrain")
-    
+
     df = ds.to_pandas()
 
     if args.max_samples is not None:
@@ -121,7 +120,9 @@ def main():
     # ------------------------------------------------------------------
     val_split = train_cfg.get("val_split", 0.1)
     n_val = int(len(df) * val_split)
-    df_shuffled = df.sample(frac=1, random_state=train_cfg.get("seed", 42)).reset_index(drop=True)
+    df_shuffled = df.sample(frac=1, random_state=train_cfg.get("seed", 42)).reset_index(
+        drop=True
+    )
     df_train = df_shuffled.iloc[n_val:]
     df_val = df_shuffled.iloc[:n_val]
 

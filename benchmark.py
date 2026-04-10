@@ -1,27 +1,26 @@
 #!/usr/bin/env python3
 """
-Benchmark a pretrained microbiome model on the 8 micro-bench tasks.
+Benchmark a pretrained microbiome model on the 8 Compass tasks.
 
 Loads the model from HuggingFace Hub (or a local path), downloads benchmark
-data from outpost-bio/micro-bench, fine-tunes on each task, and reports the
+data from outpost-bio/Compass, fine-tunes on each task, and reports the
 final benchmark score.
 
 Usage:
     # Benchmark the published model
-    python benchmark.py --model outpost-bio/MBT-6m-mgm --output_dir outputs/benchmark
+    python benchmark.py --model outpost-bio/Waypoint-6m-mgm --output_dir outputs/benchmark
 
     # Benchmark a locally pretrained model
     python benchmark.py --model outputs/pretrain/best_model --output_dir outputs/benchmark
 
     # Run a single task for quick testing
-    python benchmark.py --model outpost-bio/MBT-6m-mgm --tasks 1 --output_dir outputs/benchmark
+    python benchmark.py --model outpost-bio/Waypoint-6m-mgm --tasks 1 --output_dir outputs/benchmark
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 import numpy as np
@@ -51,7 +50,7 @@ from src.scoring import predictions_to_arrays, score_task
 # HuggingFace Hub identifiers
 # ---------------------------------------------------------------------------
 
-HF_BENCHMARK_DATASET = "outpost-bio/micro-bench"
+HF_BENCHMARK_DATASET = "outpost-bio/Compass"
 
 # ---------------------------------------------------------------------------
 # Task definitions: (name, hub_config, pre_filter, features, targets, task_type)
@@ -176,7 +175,11 @@ def load_task_data(task_def: dict) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataF
     ds = load_dataset(HF_BENCHMARK_DATASET, task_def["hub_config"])
 
     dfs = {}
-    for split_name, hf_split in [("train", "train"), ("validation", "validation"), ("test", "test")]:
+    for split_name, hf_split in [
+        ("train", "train"),
+        ("validation", "validation"),
+        ("test", "test"),
+    ]:
         split_df = ds[hf_split].to_pandas()
         # Apply pre_filter before column selection so filters can use columns that are
         # not in features/targets (e.g. 2_biome_gut filters on Biome 3).
@@ -230,9 +233,9 @@ def run_task(
     targets = task_def["targets"]
     has_drug = "Drug" in task_def["features"]
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Task: {task_name} ({task_type})")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Load data
     train_df, val_df, test_df = load_task_data(task_def)
@@ -261,7 +264,9 @@ def run_task(
     train_ds = MicrobiomeBenchmarkDataset(train_df, **ds_kwargs)
     val_ds = MicrobiomeBenchmarkDataset(val_df, **ds_kwargs)
     test_ds = MicrobiomeBenchmarkDataset(test_df, **ds_kwargs)
-    print(f"  Tokenised: {len(train_ds)} train / {len(val_ds)} val / {len(test_ds)} test")
+    print(
+        f"  Tokenised: {len(train_ds)} train / {len(val_ds)} val / {len(test_ds)} test"
+    )
 
     # Build model
     base_model = AutoModel.from_pretrained(model_path, trust_remote_code=True)
@@ -360,7 +365,7 @@ def main():
     parser = argparse.ArgumentParser(description="Benchmark a microbiome model")
     parser.add_argument(
         "--model",
-        default="outpost-bio/MBT-6m-mgm",
+        default="outpost-bio/Waypoint-6m",
         help="HuggingFace model id or local path to pretrained model",
     )
     parser.add_argument(
@@ -431,14 +436,14 @@ def main():
     scores = [r["score"] for r in all_results]
     final_score = float(np.mean(scores))
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("BENCHMARK RESULTS")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     for r in all_results:
         print(f"  {r['task']:25s}  {r['score']:.4f}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"  {'Final Score':25s}  {final_score:.4f}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Save results
     results_file = output_dir / "benchmark_results.json"
