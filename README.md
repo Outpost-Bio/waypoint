@@ -4,14 +4,12 @@ Minimal, self-contained examples for **pretraining** a transformer language mode
 
 All data and models are loaded from HuggingFace Hub.
 
-See the acoompanying paper for details [insert_here]
+See the accompanying paper for details [insert_here]
 
 ## Setup
 
 ```bash
-pip install -e .
-# or
-pip install torch transformers datasets accelerate scikit-learn scipy pandas pyarrow pyyaml huggingface-hub
+uv sync
 ```
 
 ## Pretraining
@@ -22,13 +20,13 @@ Train a GPT2 causal language model on the public pretraining dataset:
 # Full pretraining (6M parameter model, matches Waypoint-6m)
 python pretrain.py \
     --model_config configs/models/gpt2-6m.yaml \
-    --pretrain_config configs/pretraining/gpt2.yaml \
+    --pretrain_config configs/pretraining.yaml \
     --output_dir outputs/pretrain
 
 # Train a larger model
 python pretrain.py \
     --model_config configs/models/gpt2-45m.yaml \
-    --pretrain_config configs/pretraining/gpt2.yaml \
+    --pretrain_config configs/pretraining.yaml \
     --output_dir outputs/pretrain_45m
 
 ```
@@ -72,6 +70,65 @@ The script will:
 2. For each task: download data, fine-tune with a classification/regression head, evaluate on the test set
 3. Report per-task scores and the final benchmark score (mean across tasks)
 4. Save results to `outputs/benchmark/benchmark_results.json`
+
+### `benchmark_results.json` structure
+
+The file is one JSON object. `results` has one object per benchmark task (eight by default, or fewer if you pass `--tasks`).
+
+**Layout (nesting):**
+
+```
+benchmark_results.json
+├── model                 string — same value as benchmark.py --model
+├── final_score           number — arithmetic mean of every results[].score
+└── results               array of objects, one per task
+    └── [each element]
+        ├── task          string — internal task id (e.g. "1_biome", "6_drug_degradation")
+        ├── task_type     string — "classification" or "regression"
+        ├── score         number — task primary metric (macro F1 or R² clamped to [0,1])
+        └── metrics       object — extra metrics; keys depend on task_type (see below)
+```
+
+**Example** (abbreviated; real files list all tasks and more keys inside `metrics`):
+
+```json
+{
+  "model": "outpost-bio/Waypoint-6m",
+  "final_score": 0.71,
+  "results": [
+    {
+      "task": "1_biome",
+      "task_type": "classification",
+      "score": 0.65,
+      "metrics": {
+        "accuracy_Biome 1": 0.72,
+        "f1_macro_Biome 1": 0.68,
+        "f1_macro_mean": 0.65,
+        "roc_auc_mean": 0.81,
+        "pr_auc_mean": 0.74
+      }
+    },
+    {
+      "task": "6_drug_degradation",
+      "task_type": "regression",
+      "score": 0.42,
+      "metrics": {
+        "mse_Degradation Rate": 0.019,
+        "r2_Degradation Rate": 0.44,
+        "pearson_Degradation Rate": 0.67,
+        "r2_mean": 0.44
+      }
+    }
+  ]
+}
+```
+
+**`metrics` keys** (each target column from the task produces a set of suffixed keys; `<target>` is the column name, e.g. `Biome 1`, `Degradation Rate`):
+
+| `task_type` | Typical keys |
+|---|---|
+| `classification` | `accuracy_<target>`, `balanced_accuracy_<target>`, `f1_macro_<target>`; if probabilities exist: binary `roc_auc_<target>`, `pr_auc_<target>`, or multiclass `roc_auc_macro_ovo_<target>`, `pr_auc_macro_ovo_<target>`. Means: `f1_macro_mean`, optionally `roc_auc_mean`, `pr_auc_mean`. |
+| `regression` | `mse_<target>`, `r2_<target>`; often `pearson_<target>`, `spearman_<target>`. Mean: `r2_mean`. |
 
 ## Benchmark Tasks
 

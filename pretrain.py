@@ -45,7 +45,7 @@ def main():
     )
     parser.add_argument(
         "--pretrain_config",
-        default="configs/pretraining/gpt2.yaml",
+        default="configs/pretraining.yaml",
         help="Path to pretraining hyperparameter config YAML (in configs/pretraining/)",
     )
     parser.add_argument(
@@ -77,6 +77,8 @@ def main():
     ds = load_dataset(HF_DATASET, split="pretrain")
 
     df = ds.to_pandas()
+
+    df = df.head(1000)
 
     if args.max_samples is not None:
         df = df.head(args.max_samples)
