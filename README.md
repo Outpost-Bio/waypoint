@@ -168,3 +168,65 @@ benchmark_results.json
 ├── pyproject.toml
 └── README.md
 ```
+
+
+## Pretraining dataset
+
+The pretraining corpus is **[outpost-bio/Atlas](https://huggingface.co/datasets/outpost-bio/Atlas)** on the Hugging Face Hub. `pretrain.py` loads the **`pretrain`** split with the [`datasets`](https://huggingface.co/docs/datasets) library. Rows provide microbiome samples as paired **`Taxa`** and **`Relative Abundances`** lists, which the training code turns into token sequences.
+
+**Manual download.** To download the dataset in your own code run
+
+```python
+from datasets import load_dataset
+ds = load_dataset("outpost-bio/Atlas", split="pretrain")
+```
+
+Or use the [Hugging Face CLI](https://huggingface.co/docs/huggingface_hub/guides/cli) to save a local copy (optional):
+
+```bash
+hf download outpost-bio/Atlas --repo-type dataset --local-dir ./data/atlas
+```
+
+## Benchmark datasets
+
+Downstream evaluation uses **[outpost-bio/Compass](https://huggingface.co/datasets/outpost-bio/Compass)**. This is a multi-configuration dataset: each **configuration** matches one source study and exposes **`train`**, **`validation`**, and **`test`** splits. `benchmark.py` calls `load_dataset("outpost-bio/Compass", "<config>")` per task.
+
+| Task # | Hub configuration | Notes |
+|--------|-------------------|--------|
+| 1–2 | `mgnify-biomes` | Biome classification |
+| 3–5 | `handuo` | SIC / drug-related classification |
+| 6 | `mastrorilli` | Drug degradation (regression); includes a **`Drug`** column |
+| 7–8 | `roswall` | Infant cohort classification |
+
+**Manual download.** Example for one configuration:
+
+```python
+from datasets import load_dataset
+ds = load_dataset("outpost-bio/Compass", "mgnify-biomes")
+# ds["train"], ds["validation"], ds["test"]
+```
+
+## Models
+
+**Published checkpoints** are Hugging Face **model** repositories (for example **`outpost-bio/Waypoint-6m`**, which matches the default `gpt2-6m` setup. Each repo contains the pretrained weights, tokenizer files, and (when available) **`token_std_means.parquet`** for z-score ordering of tokens during fine-tuning.
+
+**Using models in this repo**
+
+- **Benchmark:** pass the Hub id or a local directory to `benchmark.py --model`:
+
+  ```bash
+  python benchmark.py --model outpost-bio/Waypoint-6m --output_dir outputs/benchmark
+  python benchmark.py --model outputs/pretrain/best_model --output_dir outputs/benchmark
+  ```
+
+- **From Python:** load with `transformers` (the benchmark uses `AutoTokenizer` and `AutoModel` with `trust_remote_code=True` because the tokenizer is custom):
+
+  ```python
+  from transformers import AutoTokenizer, AutoModel
+  tok = AutoTokenizer.from_pretrained("outpost-bio/Waypoint-6m", trust_remote_code=True)
+  model = AutoModel.from_pretrained("outpost-bio/Waypoint-6m")
+  ```
+
+**Local checkpoints.** After `pretrain.py` finishes, use **`outputs/pretrain/best_model/`** (or your `--output_dir/best_model`): it holds the saved GPT-2 LM head, tokenizer, and `token_std_means.parquet`, and can be passed to `--model` the same way as a Hub id.
+
+
