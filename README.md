@@ -2,7 +2,7 @@
 
 Minimal, self-contained examples for **pretraining** a transformer language model on microbiome taxonomic abundance data and **benchmarking** it on the [Compass](https://huggingface.co/datasets/outpost-bio/Compass) suite of 8 downstream tasks.
 
-All data and models are loaded from HuggingFace Hub.
+All data and models are loaded from the Hugging Face Hub. **Atlas**, **Compass**, and the published **Waypoint** checkpoints are **gated**: you must **request access** on each [dataset](https://huggingface.co/datasets/outpost-bio/Atlas) and [model](https://huggingface.co/outpost-bio/Waypoint-6m). Requests will be auto accepted instantly. After access is granted, **authenticate** locally so downloads succeed (see [Hugging Face access](#hugging-face-access-gated-resources) below).
 
 See the accompanying paper for details [insert_here]
 
@@ -12,9 +12,29 @@ See the accompanying paper for details [insert_here]
 uv sync
 ```
 
+If `uv sync` fails (for example lockfile resolution errors or a broken cache state), remove the lockfile and sync again so `uv` regenerates it from `pyproject.toml`:
+
+```bash
+rm uv.lock
+uv sync
+```
+
+## Hugging Face access (gated resources)
+
+1. **Request access** on the Hub for every resource you need: the [Atlas](https://huggingface.co/datasets/outpost-bio/Atlas) and [Compass](https://huggingface.co/datasets/outpost-bio/Compass) dataset repos, and each [model](https://huggingface.co/outpost-bio/Waypoint-6m) repo you plan to load. Requests will be auto accepted instantly. 
+2. **Log in** on the machine where you run this repo:
+
+   ```bash
+   huggingface-cli login
+   ```
+
+   Or set **`HF_TOKEN`** to a [read token](https://huggingface.co/docs/hub/security-tokens) with access to those repos.
+
+`pretrain.py`, `benchmark.py`, and the manual download snippets below all use the same Hub authentication.
+
 ## Pretraining
 
-Train a GPT2 causal language model on the public pretraining dataset:
+Train a GPT2 causal language model on the Atlas pretraining dataset:
 
 ```bash
 # Full pretraining (6M parameter model, matches Waypoint-6m)
@@ -172,9 +192,9 @@ benchmark_results.json
 
 ## Pretraining dataset
 
-The pretraining corpus is **[outpost-bio/Atlas](https://huggingface.co/datasets/outpost-bio/Atlas)** on the Hugging Face Hub. `pretrain.py` loads the **`pretrain`** split with the [`datasets`](https://huggingface.co/docs/datasets) library. Rows provide microbiome samples as paired **`Taxa`** and **`Relative Abundances`** lists, which the training code turns into token sequences.
+The pretraining corpus is **[outpost-bio/Atlas](https://huggingface.co/datasets/outpost-bio/Atlas)** on the Hugging Face Hub (**gated**; requires access and [authentication](#hugging-face-access-gated-resources)). `pretrain.py` loads the **`pretrain`** split with the [`datasets`](https://huggingface.co/docs/datasets) library. Rows provide microbiome samples as paired **`Taxa`** and **`Relative Abundances`** lists, which the training code turns into token sequences.
 
-**Manual download.** To download the dataset in your own code run
+**Manual download.** After you are approved and logged in, download the dataset in your own code with:
 
 ```python
 from datasets import load_dataset
@@ -189,7 +209,7 @@ hf download outpost-bio/Atlas --repo-type dataset --local-dir ./data/atlas
 
 ## Benchmark datasets
 
-Downstream evaluation uses **[outpost-bio/Compass](https://huggingface.co/datasets/outpost-bio/Compass)**. This is a multi-configuration dataset: each **configuration** matches one source study and exposes **`train`**, **`validation`**, and **`test`** splits. `benchmark.py` calls `load_dataset("outpost-bio/Compass", "<config>")` per task.
+Downstream evaluation uses **[outpost-bio/Compass](https://huggingface.co/datasets/outpost-bio/Compass)** (**gated**; requires access and [authentication](#hugging-face-access-gated-resources)). This is a multi-configuration dataset: each **configuration** matches one source study and exposes **`train`**, **`validation`**, and **`test`** splits. `benchmark.py` calls `load_dataset("outpost-bio/Compass", "<config>")` per task.
 
 | Task # | Hub configuration | Notes |
 |--------|-------------------|--------|
@@ -208,7 +228,7 @@ ds = load_dataset("outpost-bio/Compass", "mgnify-biomes")
 
 ## Models
 
-**Published checkpoints** are Hugging Face **model** repositories (for example **`outpost-bio/Waypoint-6m`**, which matches the default `gpt2-6m` setup. Each repo contains the pretrained weights, tokenizer files, and (when available) **`token_std_means.parquet`** for z-score ordering of tokens during fine-tuning.
+**Published checkpoints** are Hugging Face **model** repositories (for example **`outpost-bio/Waypoint-6m`**, which matches the default `gpt2-6m` setup). They are **gated**; request access on each model page and [authenticate](#hugging-face-access-gated-resources) before loading from the Hub. Each repo contains the pretrained weights, tokenizer files, and (when available) **`token_std_means.parquet`** for z-score ordering of tokens during fine-tuning.
 
 **Using models in this repo**
 
