@@ -249,4 +249,7 @@ ds = load_dataset("outpost-bio/Compass", "mgnify-biomes")
 
 **Local checkpoints.** After `pretrain.py` finishes, use **`outputs/pretrain/best_model/`** (or your `--output_dir/best_model`): it holds the saved GPT-2 LM head, tokenizer, and `token_std_means.parquet`, and can be passed to `--model` the same way as a Hub id.
 
+## License
+apache-2.0
 
+Maintainer / contact: neythen@outpost.bio
