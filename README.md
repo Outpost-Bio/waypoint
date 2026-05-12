@@ -4,7 +4,9 @@ Minimal, self-contained examples for **pretraining** a transformer language mode
 
 All data and models are loaded from the Hugging Face Hub. **Atlas**, **Compass**, and the published **Waypoint** checkpoints are **gated**: you must **request access** on each [dataset](https://huggingface.co/datasets/outpost-bio/Atlas) and [model](https://huggingface.co/outpost-bio/Waypoint-6m). Requests will be auto accepted instantly. After access is granted, **authenticate** locally so downloads succeed (see [Hugging Face access](#hugging-face-access-gated-resources) below).
 
-See the accompanying paper for details [insert_here]
+See [our preprint](https://www.biorxiv.org/content/10.64898/2026.05.02.722381v1) for details.
+
+Join [our slack commnity](https://join.slack.com/t/outpostbio-waypoint/shared_invite/zt-3w6ivgtba-WJOCkdxiISxQpwVq9ZZxTA) for support and discussion about microbiome foundation models.
 
 ## Setup
 
