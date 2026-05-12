@@ -6,7 +6,7 @@ All data and models are loaded from the Hugging Face Hub. **Atlas**, **Compass**
 
 See [our preprint](https://www.biorxiv.org/content/10.64898/2026.05.02.722381v1) for details.
 
-Join [our slack commnity](https://join.slack.com/t/outpostbio-waypoint/shared_invite/zt-3w6ivgtba-WJOCkdxiISxQpwVq9ZZxTA) for support and discussion about microbiome foundation models.
+Join [our slack community](https://join.slack.com/t/outpostbio-waypoint/shared_invite/zt-3w6ivgtba-WJOCkdxiISxQpwVq9ZZxTA) for support and discussion about microbiome foundation models.
 
 ## Setup
 
