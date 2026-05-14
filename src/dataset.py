@@ -36,8 +36,10 @@ def compute_token_std_means(
 ) -> pd.DataFrame:
     """Compute per-token mean and std of relative abundance across the dataset.
 
-    Returns a DataFrame with columns ``taxon``, ``mean``, ``std`` — one row per
-    token in the tokenizer vocabulary (excluding special tokens).
+    Returns a DataFrame indexed by token (index name ``token``) with columns
+    ``mean`` and ``std`` — one row per token in the tokenizer vocabulary
+    (excluding special tokens). Matches the schema used by the published
+    ``outpost-bio/Waypoint-*`` checkpoints.
     """
     accum: dict[str, list[float]] = defaultdict(list)
 
@@ -60,13 +62,12 @@ def compute_token_std_means(
             if token is not None and token in tokenizer.vocab:
                 accum[token].append(float(ra))
 
-    rows = []
-    for token in sorted(accum.keys()):
-        vals = accum[token]
-        rows.append(
-            {"taxon": token, "mean": np.mean(vals), "std": max(np.std(vals), 1e-9)}
-        )
-    return pd.DataFrame(rows)
+    tokens = sorted(accum.keys())
+    means = [np.mean(accum[t]) for t in tokens]
+    stds = [max(np.std(accum[t]), 1e-9) for t in tokens]
+    out = pd.DataFrame({"mean": means, "std": stds}, index=tokens)
+    out.index.name = "token"
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -80,15 +81,18 @@ def _sort_by_zscore(
     token_std_means: pd.DataFrame,
     tokenizer: TaxonomicTokenizer,
 ) -> list[int]:
-    """Sort token IDs by descending z-score of their relative abundance."""
-    taxon_col = token_std_means.set_index("taxon")
+    """Sort token IDs by descending z-score of their relative abundance.
 
+    Expects ``token_std_means`` to be indexed by token (matching the schema
+    written by :func:`compute_token_std_means` and used by the published
+    ``outpost-bio/Waypoint-*`` checkpoints).
+    """
     scored = []
     for tid, ra in zip(token_ids, ras):
         token_str = tokenizer._convert_id_to_token(tid)
-        if token_str in taxon_col.index:
-            mean = taxon_col.loc[token_str, "mean"]
-            std = taxon_col.loc[token_str, "std"]
+        if token_str in token_std_means.index:
+            mean = token_std_means.loc[token_str, "mean"]
+            std = token_std_means.loc[token_str, "std"]
             zscore = (ra - mean) / std
         else:
             zscore = 0.0

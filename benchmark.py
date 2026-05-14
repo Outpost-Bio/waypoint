@@ -170,7 +170,10 @@ def get_class_weights(
     return weights_list
 
 
-def load_task_data(task_def: dict) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_task_data(
+    task_def: dict,
+    max_samples: int | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Load train/val/test splits from HuggingFace Hub for a task."""
     ds = load_dataset(HF_BENCHMARK_DATASET, task_def["hub_config"])
 
@@ -190,6 +193,9 @@ def load_task_data(task_def: dict) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataF
         available_cols = [c for c in cols if c in split_df.columns]
         split_df = split_df[available_cols].copy()
 
+        if max_samples is not None:
+            split_df = split_df.head(max_samples)
+
         dfs[split_name] = split_df.reset_index(drop=True)
 
     return dfs["train"], dfs["validation"], dfs["test"]
@@ -207,6 +213,7 @@ def run_task(
     token_std_means: pd.DataFrame | None,
     benchmark_cfg: dict,
     output_dir: Path,
+    max_samples: int | None = None,
 ) -> dict:
     """Fine-tune and evaluate on a single benchmark task."""
     task_name = task_def["name"]
@@ -219,7 +226,7 @@ def run_task(
     print(f"{'=' * 60}")
 
     # Load data
-    train_df, val_df, test_df = load_task_data(task_def)
+    train_df, val_df, test_df = load_task_data(task_def, max_samples=max_samples)
     print(f"  Data: {len(train_df)} train / {len(val_df)} val / {len(test_df)} test")
     print(train_df.columns)
 
@@ -371,6 +378,12 @@ def main():
         type=int,
         default=42,
     )
+    parser.add_argument(
+        "--max_samples",
+        type=int,
+        default=None,
+        help="Cap each split (train/val/test) at this many samples. Useful for quick smoke tests.",
+    )
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -410,6 +423,7 @@ def main():
             token_std_means,
             benchmark_cfg,
             output_dir,
+            max_samples=args.max_samples,
         )
         all_results.append(result)
 
