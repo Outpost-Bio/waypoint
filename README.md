@@ -74,6 +74,20 @@ The script will:
 4. Train a GPT2 model with next-token prediction and early stopping
 5. Save the best model to `outputs/pretrain/best_model/`
 
+### Pretraining on your own data
+
+Pass `--data PATH` to pretrain on a local file instead of downloading Atlas. The file must be in waypoint format — a `.parquet`/`.csv`/`.tsv` with two list-columns, `Taxa` and `Relative Abundances`:
+
+```bash
+python pretrain.py \
+    --data path/to/my_samples.parquet \
+    --model_config configs/models/gpt2-6m.yaml \
+    --pretrain_config configs/pretraining.yaml \
+    --output_dir outputs/pretrain
+```
+
+If your data is a sample × taxa abundance matrix instead, serialize it first with `prepare_dataset.py` — see [Preparing a dataset from an abundance matrix](#preparing-a-dataset-from-an-abundance-matrix).
+
 ## Benchmarking
 
 Evaluate a pretrained model on all 8 Compass tasks:
@@ -152,6 +166,76 @@ benchmark_results.json
 | `classification` | `accuracy_<target>`, `balanced_accuracy_<target>`, `f1_macro_<target>`; if probabilities exist: binary `roc_auc_<target>`, `pr_auc_<target>`, or multiclass `roc_auc_macro_ovo_<target>`, `pr_auc_macro_ovo_<target>`. Means: `f1_macro_mean`, optionally `roc_auc_mean`, `pr_auc_mean`. |
 | `regression` | `mse_<target>`, `r2_<target>`; often `pearson_<target>`, `spearman_<target>`. Mean: `r2_mean`. |
 
+## Generating embeddings
+
+Use `embed.py` to produce one fixed-size embedding vector per sample with a pretrained Waypoint model (no fine-tuning required). Input is a waypoint-format file — if you only have an abundance matrix, run `prepare_dataset.py` first to serialize it.
+
+```bash
+python embed.py \
+    --model outpost-bio/Waypoint-6m \
+    --data path/to/samples.parquet \
+    --output embeddings.parquet
+```
+
+Output is a parquet (or CSV, if `--output` ends in `.csv`) indexed by sample ID with columns `dim_0 … dim_{H-1}`, where `H` is the model's hidden size.
+
+Useful flags:
+
+| Flag | Default | Notes |
+|---|---|---|
+| `--pooling` | `last_token` | How to collapse the token sequence: `last_token`, `mean`, `first_token`, `cls_token`. |
+| `--batch_size` | `32` | |
+| `--max_length` | `512` | Truncates samples with more taxa than this (after sorting by abundance / z-score). |
+| `--device` | auto | `cuda`, `mps`, or `cpu`. |
+
+## Preparing a dataset from an abundance matrix
+
+`prepare_dataset.py` converts a sample × taxa abundance matrix into a serialized waypoint-format file. Run it once; the output can then be passed to `pretrain.py --data` or `embed.py --data` (or loaded directly in Python).
+
+```bash
+# MGnify-style TSV (taxa as rows, samples as columns; auto-detected)
+python prepare_dataset.py \
+    --input examples/abundance_matrix.tsv \
+    --output examples/abundance_matrix.parquet
+
+# Then use it anywhere:
+python embed.py    --model outpost-bio/Waypoint-6m --data examples/abundance_matrix.parquet --output emb.parquet
+python pretrain.py --data examples/abundance_matrix.parquet --model_config configs/models/gpt2-6m.yaml --pretrain_config configs/pretraining.yaml --output_dir outputs/pretrain
+```
+
+### Supported matrix layouts
+
+| `--orientation` | Layout | Example |
+|---|---|---|
+| `samples_as_rows` | Rows = samples, columns = taxa, first column = sample ID. | A CSV exported from a phyloseq OTU table. |
+| `taxa_as_rows` | Rows = taxa, columns = samples, first column = taxonomy lineage. | MGnify amplicon abundance TSVs. |
+| `auto` (default) | Detected from the first column header (treated as `taxa_as_rows` if the header is `taxonomy`, `lineage`, `taxon`, `otu`, or `#otu id`). | |
+
+Taxa identifiers should be **full lineage strings** (`k__Bacteria; p__Firmicutes; … ; g__Lactobacillus`) so the tokenizer can extract whichever rank the model was trained at (genus by default) and fall back to a higher rank when a lineage is shorter. If your column / row headers are bare names instead (e.g. just `Lactobacillus`), pass `--taxonomy_format genus` (or `species`, `family`, …) to prefix them with the rank tag — but be aware this disables higher-rank fallback.
+
+### Other flags
+
+| Flag | Default | Notes |
+|---|---|---|
+| `--no_normalize` | off | Skip row-normalization (use if the matrix already holds relative abundances). |
+| `--keep_zeros` | off | Keep zero-abundance entries in each sample's lists. |
+| `--metadata PATH` | none | CSV/TSV/parquet of per-sample metadata (indexed by sample ID); columns are merged into the output for use as labels/targets. |
+
+A tiny MGnify-style example lives at `examples/abundance_matrix.tsv` (6 samples, 11 lineages at varying depths).
+
+### Using the converter from Python
+
+```python
+from src.abundance_matrix import load_abundance_matrix, matrix_to_waypoint_df
+
+matrix = load_abundance_matrix("examples/abundance_matrix.tsv")  # samples x taxa
+df = matrix_to_waypoint_df(matrix)
+df.to_parquet("my_dataset.parquet")
+# df has columns: 'Taxa' (list[str]) and 'Relative Abundances' (list[float]),
+# indexed by sample ID. Feed it to MicrobiomePretrainingDataset /
+# MicrobiomeBenchmarkDataset directly, or save it for the CLI scripts.
+```
+
 ## Benchmark Tasks
 
 | # | Task | Type | Dataset | Targets |
@@ -172,6 +256,10 @@ benchmark_results.json
 ```
 ├── pretrain.py              # Pretraining script
 ├── benchmark.py             # Benchmarking script
+├── embed.py                 # Generate per-sample embeddings from a pretrained model
+├── prepare_dataset.py       # Convert an abundance matrix into a waypoint-format file
+├── examples/
+│   └── abundance_matrix.tsv       # MGnify-style example input for prepare_dataset.py
 ├── configs/
 │   ├── models/                    # Model architecture configs (GPT2 6M–170M)
 │   │   ├── gpt2-6m-mgm.yaml
@@ -184,7 +272,8 @@ benchmark_results.json
 │   └── benchmark.yaml            # Fine-tuning hyperparameters for benchmarking
 ├── src/
 │   ├── tokenizer.py         # TaxonomicTokenizer (standalone, no private deps)
-│   ├── dataset.py           # Torch datasets for pretraining and benchmarking
+│   ├── dataset.py           # Torch datasets + waypoint-format I/O helpers
+│   ├── abundance_matrix.py  # Convert sample x taxa matrices into waypoint format
 │   ├── models.py            # Classification/regression heads
 │   └── scoring.py           # Metric computation and task scoring
 ├── pyproject.toml

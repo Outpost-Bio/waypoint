@@ -1,0 +1,12 @@
+taxonomy	sample_001	sample_002	sample_003	sample_004	sample_005	sample_006
+k__Bacteria	0.0021	0.0008	0.0015	0.0	0.0032	0.0011
+k__Bacteria; p__Firmicutes	0.0	0.0012	0.0	0.0	0.0	0.0
+k__Bacteria; p__Firmicutes; c__Bacilli; o__Lactobacillales; f__Lactobacillaceae; g__Lactobacillus	0.412	0.051	0.0	0.683	0.018	0.272
+k__Bacteria; p__Firmicutes; c__Clostridia; o__Clostridiales; f__Lachnospiraceae; g__Roseburia	0.084	0.205	0.142	0.034	0.291	0.122
+k__Bacteria; p__Firmicutes; c__Clostridia; o__Clostridiales; f__Ruminococcaceae; g__Faecalibacterium	0.273	0.137	0.193	0.052	0.376	0.241
+k__Bacteria; p__Bacteroidetes	0.0	0.0	0.027	0.0	0.0	0.018
+k__Bacteria; p__Bacteroidetes; c__Bacteroidia; o__Bacteroidales; f__Bacteroidaceae; g__Bacteroides	0.155	0.485	0.451	0.072	0.218	0.207
+k__Bacteria; p__Bacteroidetes; c__Bacteroidia; o__Bacteroidales; f__Prevotellaceae; g__Prevotella	0.0	0.061	0.142	0.0	0.013	0.034
+k__Bacteria; p__Actinobacteria; c__Actinobacteria; o__Bifidobacteriales; f__Bifidobacteriaceae; g__Bifidobacterium	0.052	0.018	0.012	0.143	0.029	0.082
+k__Bacteria; p__Proteobacteria; c__Gammaproteobacteria; o__Enterobacterales; f__Enterobacteriaceae; g__Escherichia	0.011	0.013	0.054	0.0	0.027	0.013
+k__Bacteria; p__Verrucomicrobia; c__Verrucomicrobiae; o__Verrucomicrobiales; f__Akkermansiaceae; g__Akkermansia	0.012	0.011	0.005	0.013	0.026	0.0

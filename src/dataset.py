@@ -8,7 +8,9 @@ without any private dependencies.
 
 from __future__ import annotations
 
+import ast
 from collections import defaultdict
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -325,3 +327,57 @@ def build_drug_map(df: pd.DataFrame) -> dict[str, int]:
         [str(v) for v in df["Drug"].dropna().unique()]
     )
     return {d: i for i, d in enumerate(unique_drugs)}
+
+
+# ---------------------------------------------------------------------------
+# I/O for waypoint-format DataFrames and model artefacts
+# ---------------------------------------------------------------------------
+
+
+def load_waypoint_dataframe(path: str | Path) -> pd.DataFrame:
+    """Load a waypoint-format DataFrame from parquet or CSV/TSV.
+
+    Expected columns: ``Taxa`` (list of taxonomy strings) and
+    ``Relative Abundances`` (list of floats). Any additional columns are
+    preserved (useful for labels / metadata).
+
+    CSV/TSV files store lists as their string repr; this function parses
+    them back with ``ast.literal_eval``. Prefer parquet for round-tripping.
+    """
+    path = Path(path)
+    suffix = path.suffix.lower()
+    if suffix == ".parquet":
+        return pd.read_parquet(path)
+    if suffix in (".csv", ".tsv", ".tab"):
+        sep = "\t" if suffix in (".tsv", ".tab") else ","
+        df = pd.read_csv(path, sep=sep)
+        for col in ("Taxa", "Relative Abundances"):
+            if col in df.columns and df[col].dtype == object:
+                df[col] = df[col].apply(
+                    lambda v: ast.literal_eval(v) if isinstance(v, str) else v
+                )
+        return df
+    raise ValueError(
+        f"Unsupported file format: {suffix!r}. Use .parquet, .csv, or .tsv."
+    )
+
+
+def try_load_token_std_means(model_path: str) -> pd.DataFrame | None:
+    """Try to load ``token_std_means.parquet`` from a local dir or the HF Hub.
+
+    Returns ``None`` if not found in either location.
+    """
+    local = Path(model_path) / "token_std_means.parquet"
+    if local.exists():
+        return pd.read_parquet(local)
+
+    try:
+        from huggingface_hub import hf_hub_download
+
+        path = hf_hub_download(
+            repo_id=model_path,
+            filename="token_std_means.parquet",
+        )
+        return pd.read_parquet(path)
+    except Exception:
+        return None

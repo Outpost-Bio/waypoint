@@ -28,7 +28,6 @@ import pandas as pd
 import torch
 import yaml
 from datasets import load_dataset
-from huggingface_hub import hf_hub_download
 from sklearn.utils.class_weight import compute_class_weight
 from transformers import (
     AutoModel,
@@ -42,6 +41,7 @@ from src.dataset import (
     MicrobiomeBenchmarkDataset,
     build_drug_map,
     build_label_maps,
+    try_load_token_std_means,
 )
 from src.models import ClassificationModel, RegressionModel
 from src.scoring import predictions_to_arrays, score_task
@@ -193,25 +193,6 @@ def load_task_data(task_def: dict) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataF
         dfs[split_name] = split_df.reset_index(drop=True)
 
     return dfs["train"], dfs["validation"], dfs["test"]
-
-
-def try_load_token_std_means(model_path: str) -> pd.DataFrame | None:
-    """Try to load token_std_means.parquet from a model (local or Hub)."""
-    # Local path
-    local = Path(model_path) / "token_std_means.parquet"
-    if local.exists():
-        return pd.read_parquet(local)
-
-    # HuggingFace Hub
-    try:
-        path = hf_hub_download(
-            repo_id=model_path,
-            filename="token_std_means.parquet",
-            trust_remote_code=True,
-        )
-        return pd.read_parquet(path)
-    except Exception:
-        return None
 
 
 # ---------------------------------------------------------------------------

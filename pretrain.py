@@ -30,7 +30,11 @@ from transformers import (
     TrainingArguments,
 )
 
-from src.dataset import MicrobiomePretrainingDataset, compute_token_std_means
+from src.dataset import (
+    MicrobiomePretrainingDataset,
+    compute_token_std_means,
+    load_waypoint_dataframe,
+)
 from src.tokenizer import TaxonomicTokenizer
 
 HF_DATASET = "outpost-bio/Atlas"
@@ -59,6 +63,15 @@ def main():
         default=None,
         help="Limit number of training samples (for quick testing)",
     )
+    parser.add_argument(
+        "--data",
+        default=None,
+        help=(
+            "Path to a local waypoint-format file (.parquet/.csv/.tsv) with "
+            "'Taxa' and 'Relative Abundances' columns. If omitted, downloads "
+            f"{HF_DATASET} from the HuggingFace Hub."
+        ),
+    )
     args = parser.parse_args()
 
     with open(args.model_config) as f:
@@ -71,12 +84,15 @@ def main():
     best_model_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
-    # 1. Load pretraining data from HuggingFace Hub
+    # 1. Load pretraining data (local file or HuggingFace Hub)
     # ------------------------------------------------------------------
-    print(f"Loading dataset from {HF_DATASET} ...")
-    ds = load_dataset(HF_DATASET, split="pretrain")
-
-    df = ds.to_pandas()
+    if args.data is not None:
+        print(f"Loading dataset from {args.data} ...")
+        df = load_waypoint_dataframe(args.data)
+    else:
+        print(f"Loading dataset from {HF_DATASET} ...")
+        ds = load_dataset(HF_DATASET, split="pretrain")
+        df = ds.to_pandas()
 
     if args.max_samples is not None:
         df = df.head(args.max_samples)
