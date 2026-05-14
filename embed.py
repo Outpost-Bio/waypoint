@@ -22,7 +22,7 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoModel
 
 from src.dataset import (
     _sort_by_abundance,
@@ -31,6 +31,7 @@ from src.dataset import (
     try_load_token_std_means,
 )
 from src.models import _pool
+from src.tokenizer import load_tokenizer
 
 
 def tokenize_for_embedding(
@@ -154,7 +155,7 @@ def main():
     # 2. Load model + tokenizer + token statistics
     # ------------------------------------------------------------------
     print(f"Loading model from {args.model} ...")
-    tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
+    tokenizer = load_tokenizer(args.model)
     model = AutoModel.from_pretrained(args.model, trust_remote_code=True)
     model.eval()
 

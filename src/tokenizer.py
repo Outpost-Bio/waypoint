@@ -211,3 +211,20 @@ class TaxonomicTokenizer(PreTrainedTokenizer):
 
     def get_vocab(self) -> dict[str, int]:
         return dict(self._token_to_id)
+
+
+def load_tokenizer(model_path: str):
+    """Load a tokenizer for a Waypoint model from a local dir or the HF Hub.
+
+    Tries ``AutoTokenizer.from_pretrained`` first (works for HF Hub checkpoints
+    that bundle remote code via ``auto_map``) and falls back to constructing
+    :class:`TaxonomicTokenizer` directly from the saved ``vocab.json`` and
+    ``tokenizer_config.json`` — which is how ``pretrain.py`` writes local
+    checkpoints (records ``tokenizer_class`` but no ``auto_map``).
+    """
+    from transformers import AutoTokenizer
+
+    try:
+        return AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    except (AttributeError, ValueError, OSError):
+        return TaxonomicTokenizer.from_pretrained(model_path)

@@ -31,7 +31,6 @@ from datasets import load_dataset
 from sklearn.utils.class_weight import compute_class_weight
 from transformers import (
     AutoModel,
-    AutoTokenizer,
     EarlyStoppingCallback,
     Trainer,
     TrainingArguments,
@@ -45,6 +44,7 @@ from src.dataset import (
 )
 from src.models import ClassificationModel, RegressionModel
 from src.scoring import predictions_to_arrays, score_task
+from src.tokenizer import load_tokenizer
 
 # ---------------------------------------------------------------------------
 # HuggingFace Hub identifiers
@@ -390,7 +390,7 @@ def main():
 
     # Load tokenizer
     print(f"Loading tokenizer from {args.model} ...")
-    tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
+    tokenizer = load_tokenizer(args.model)
     print(f"Tokenizer vocab size: {tokenizer.vocab_size}")
 
     # Load token_std_means (for z-score ordering)
