@@ -78,8 +78,6 @@ def main():
 
     df = ds.to_pandas()
 
-    df = df.head(1000)
-
     if args.max_samples is not None:
         df = df.head(args.max_samples)
         print(f"Using {len(df)} samples (--max_samples)")
