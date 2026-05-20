@@ -3,13 +3,16 @@ name = "microbiome-pretrain-benchmark"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.1"
+requires-python = ">=3.10"
 dependencies = [
-    "datasets,
+    "datasets",
     "tqdm",
     "pyyaml",
     "torch",
     "transformers",
     "accelerate",
     "scikit-learn",
+    "plotly",
+    "ipykernel",
+    "nbformat>=5.10.4",
 ]
