@@ -125,6 +125,46 @@ The script will:
 3. Report per-task scores and the final benchmark score (mean across tasks)
 4. Save results to `outputs/benchmark/benchmark_results.json`
 
+## Fine-tuning on Your Own Labels
+
+Use `finetune.py` to fine-tune a published Waypoint checkpoint from the Hugging Face Hub, or a local checkpoint such as `outputs/pretrain/best_model`, on your own labelled data. The task-specific inputs are command-line arguments; the config file contains the remaining fine-tuning settings.
+
+The input must be a waypoint-format `.parquet`/`.csv`/`.tsv` with `Taxa`, `Relative Abundances`, and a target column. If your labels live in a separate metadata table, merge them when preparing the dataset:
+
+```bash
+python prepare_dataset.py \
+    --input my_matrix.csv \
+    --metadata sample_labels.csv \
+    --output my_dataset.parquet
+```
+
+Classification example (Compass `mgnify-biomes`, target `Biome 1`):
+
+```bash
+python finetune.py \
+    --model outpost-bio/Waypoint-6m \
+    --data data/compass_biome1_smoke.parquet \
+    --output_dir outputs/finetune_biome1 \
+    --task_type classification \
+    --target "Biome 1" \
+    --config configs/finetune_classification.yaml
+```
+
+Regression example (Compass `mastrorilli`, target `Degradation Rate`; includes `Drug` as a categorical covariate, matching `benchmark.py`):
+
+```bash
+python finetune.py \
+    --model outpost-bio/Waypoint-6m \
+    --data data/compass_degradation_smoke.parquet \
+    --output_dir outputs/finetune_degradation \
+    --task_type regression \
+    --target "Degradation Rate" \
+    --covariate_column Drug \
+    --config configs/finetune_regression.yaml
+```
+
+The config is flat and contains settings such as `max_length`, split fractions, batch size, learning rate, and early stopping patience. To add a categorical covariate, pass `--covariate_column COLUMN`. To use LoRA, set `use_lora: true`; the default target modules are GPT-2 style attention/projection layers (`c_attn`, `c_proj`). By default, `finetune.py` makes a random 80/10/10 train/validation/test split. To use predefined splits, set `split_column` to a column with values such as `train`, `validation`, and `test`. Outputs include `finetune_results.json`, per-split metric JSON files, checkpoints, and `best_model/` with the tokenizer, base model, fine-tuned head/adaptor state, and fine-tuning metadata.
+
 ### `benchmark_results.json` structure
 
 The file is one JSON object. `results` has one object per benchmark task (eight by default, or fewer if you pass `--tasks`).
@@ -272,27 +312,30 @@ df.to_parquet("my_dataset.parquet")
 ## Repository Structure
 
 ```
-├── src/waypoint_bio/
-│   ├── __init__.py             # Public API: TaxonomicTokenizer, load_abundance_matrix, ...
-│   ├── cli.py                  # `waypoint` entry point — dispatches to the four subcommands
-│   ├── pretrain.py             # `waypoint pretrain` — pretrain a GPT2 microbiome model
-│   ├── benchmark.py            # `waypoint benchmark` — evaluate on the 8 Compass tasks
-│   ├── embed.py                # `waypoint embed` — generate per-sample embeddings
-│   ├── prepare_dataset.py      # `waypoint prepare-dataset` — abundance matrix → waypoint format
-│   ├── tokenizer.py            # TaxonomicTokenizer (standalone, no private deps)
-│   ├── dataset.py              # Torch datasets + waypoint-format I/O helpers
-│   ├── abundance_matrix.py     # Sample x taxa matrices → waypoint format
-│   ├── models.py               # Classification/regression heads
-│   ├── scoring.py              # Metric computation and task scoring
-│   └── configs/                # Bundled YAML configs (shipped inside the wheel)
-│       ├── pretraining.yaml
-│       ├── benchmark.yaml
-│       └── models/             # Model architecture configs (GPT2 6M–170M)
-│           ├── gpt2-6m.yaml
-│           ├── gpt2-6m-mgm.yaml
-│           └── ...             # gpt2-10m / 18m / 29m / 45m / 79m / 85m / 170m
+├── pretrain.py              # Pretraining script
+├── benchmark.py             # Benchmarking script
+├── finetune.py              # Fine-tune on user-provided labelled data
+├── embed.py                 # Generate per-sample embeddings from a pretrained model
+├── prepare_dataset.py       # Convert an abundance matrix into a waypoint-format file
 ├── examples/
-│   └── abundance_matrix.tsv    # MGnify-style example input for `waypoint prepare-dataset`
+│   └── abundance_matrix.tsv       # MGnify-style example input for prepare_dataset.py
+├── configs/
+│   ├── models/                    # Model architecture configs (GPT2 6M–170M)
+│   │   ├── gpt2-6m-mgm.yaml
+│   │   ├── gpt2-6m.yaml
+│   │   ├── gpt2-10m.yaml
+│   │   ├── ...
+│   │   └── gpt2-170m.yaml
+│   ├── pretraining.yaml          # Pretraining hyperparameters
+│   ├── benchmark.yaml            # Fine-tuning hyperparameters for benchmarking
+│   ├── finetune_classification.yaml
+│   └── finetune_regression.yaml
+├── src/
+│   ├── tokenizer.py         # TaxonomicTokenizer (standalone, no private deps)
+│   ├── dataset.py           # Torch datasets + waypoint-format I/O helpers
+│   ├── abundance_matrix.py  # Convert sample x taxa matrices into waypoint format
+│   ├── models.py            # Classification/regression heads
+│   └── scoring.py           # Metric computation and task scoring
 ├── pyproject.toml
 └── README.md
 ```

@@ -31,6 +31,10 @@ dependencies = [
     "pandas",
     "pyarrow",
     "numpy",
+    "plotly",
+    "ipykernel",
+    "nbformat>=5.10.4",
+    "peft",
 ]
 
 [project.urls]

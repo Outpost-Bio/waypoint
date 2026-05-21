@@ -9,3 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .claude/
+
+# Generated notebook figures
+figs/
+.DS_Store
