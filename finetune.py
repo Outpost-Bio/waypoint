@@ -86,8 +86,7 @@ def parse_args():
         "--covariate_column",
         default=None,
         help=(
-            "Optional categorical covariate column to one-hot encode. "
-            "If omitted, uses Drug automatically when present."
+            "Optional categorical covariate column to one-hot encode."
         ),
     )
     parser.add_argument(
@@ -322,7 +321,7 @@ def main():
         task_type=cfg["task_type"],
         label_maps=label_maps,
         covariate_map=covariate_map,
-        covariate_column=covariate_column or "Drug",
+        covariate_column=covariate_column,
         max_length=cfg["max_length"],
         token_std_means=token_std_means,
         filter_unk_taxa=cfg["filter_unk_taxa"],

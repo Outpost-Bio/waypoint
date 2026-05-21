@@ -209,11 +209,14 @@ class MicrobiomeBenchmarkDataset(Dataset):
         task_type: Literal["classification", "regression"],
         label_maps: dict[str, dict[str, int]] | None = None,
         covariate_map: dict[str, int] | None = None,
-        covariate_column: str = "Drug",
+        covariate_column: str | None = None,
         max_length: int = 512,
         token_std_means: pd.DataFrame | None = None,
         filter_unk_taxa: bool = True,
     ):
+        if covariate_map is not None and covariate_column is None:
+            raise ValueError("covariate_column is required when covariate_map is set")
+
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.task_type = task_type

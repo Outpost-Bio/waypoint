@@ -104,10 +104,11 @@ TASKS = [
     {
         "name": "6_drug_degradation",
         "hub_config": "mastrorilli",
-        "features": ["Taxa", "Relative Abundances", "Drug"],
+        "features": ["Taxa", "Relative Abundances"],
         "targets": ["Degradation Rate"],
         "task_type": "regression",
         "pre_filter": None,
+        "covariate_column": "Drug",
     },
     {
         "name": "7_infant_age",
@@ -190,6 +191,9 @@ def load_task_data(
             split_df = task_def["pre_filter"](split_df)
 
         cols = task_def["features"] + task_def["targets"]
+        if covariate_column := task_def.get("covariate_column"):
+            cols.append(covariate_column)
+        cols = list(dict.fromkeys(cols))
         available_cols = [c for c in cols if c in split_df.columns]
         split_df = split_df[available_cols].copy()
 
@@ -219,7 +223,7 @@ def run_task(
     task_name = task_def["name"]
     task_type = task_def["task_type"]
     targets = task_def["targets"]
-    covariate_column = "Drug" if "Drug" in task_def["features"] else None
+    covariate_column = task_def.get("covariate_column")
 
     print(f"\n{'=' * 60}")
     print(f"Task: {task_name} ({task_type})")
@@ -245,7 +249,7 @@ def run_task(
         task_type=task_type,
         label_maps=label_maps,
         covariate_map=covariate_map,
-        covariate_column=covariate_column or "Drug",
+        covariate_column=covariate_column,
         max_length=512,
         token_std_means=token_std_means,
         filter_unk_taxa=benchmark_cfg.get("filter_unk_taxa", True),
