@@ -3,7 +3,7 @@
 Minimal config-driven fine-tuning for Waypoint models.
 
 Usage:
-    python finetune.py --config configs/finetune_classification.yaml \\
+    waypoint finetune --config configs/finetune_classification.yaml \\
         --model outpost-bio/Waypoint-6m \\
         --data path/to/prepared_dataset.parquet \\
         --output_dir outputs/finetune_classification \\
@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
@@ -27,16 +28,20 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 from transformers import AutoModel, EarlyStoppingCallback, Trainer, TrainingArguments
 
-from src.dataset import (
+from waypoint_bio.dataset import (
     MicrobiomeBenchmarkDataset,
     build_covariate_map,
     build_label_maps,
     load_waypoint_dataframe,
     try_load_token_std_means,
 )
-from src.models import ClassificationModel, RegressionModel
-from src.scoring import predictions_to_arrays, score_task
-from src.tokenizer import load_tokenizer
+from waypoint_bio.models import ClassificationModel, RegressionModel
+from waypoint_bio.scoring import predictions_to_arrays, score_task
+from waypoint_bio.tokenizer import load_tokenizer
+
+_PKG = files("waypoint_bio")
+DEFAULT_CLASSIFICATION_CONFIG = str(_PKG / "configs" / "finetune_classification.yaml")
+DEFAULT_REGRESSION_CONFIG = str(_PKG / "configs" / "finetune_regression.yaml")
 
 DEFAULTS = {
     "split_column": None,
@@ -66,8 +71,22 @@ DEFAULTS = {
 }
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Fine-tune a Waypoint model")
+def _resolve_config_path(value: str) -> str:
+    """Resolve a config path, falling back to bundled package configs."""
+    if Path(value).exists():
+        return value
+    bundled = Path(str(_PKG)) / value
+    if bundled.exists():
+        return str(bundled)
+    stripped = value.lstrip("/")
+    if stripped.startswith("configs/"):
+        bundled = Path(str(_PKG)) / stripped
+        if bundled.exists():
+            return str(bundled)
+    return value
+
+
+def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--model", required=True, help="HF model id or local model path"
     )
@@ -85,15 +104,21 @@ def parse_args():
     parser.add_argument(
         "--covariate_column",
         default=None,
-        help=(
-            "Optional categorical covariate column to one-hot encode."
-        ),
+        help="Optional categorical covariate column to one-hot encode.",
     )
     parser.add_argument(
         "--config",
-        required=True,
-        help="Path to flat fine-tuning YAML config",
+        default=None,
+        help=(
+            "Path to flat fine-tuning YAML config. Defaults to the bundled "
+            "classification or regression config based on --task_type."
+        ),
     )
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Fine-tune a Waypoint model")
+    add_arguments(parser)
     return parser.parse_args()
 
 
@@ -263,9 +288,17 @@ def evaluate(
     return score, metrics
 
 
-def main():
-    args = parse_args()
-    cfg = load_config(args.config)
+def _default_config_for_task(task_type: str) -> str:
+    if task_type == "classification":
+        return DEFAULT_CLASSIFICATION_CONFIG
+    if task_type == "regression":
+        return DEFAULT_REGRESSION_CONFIG
+    raise ValueError(f"Unknown task_type: {task_type}")
+
+
+def run(args: argparse.Namespace) -> None:
+    config_path = args.config or _default_config_for_task(args.task_type)
+    cfg = load_config(_resolve_config_path(config_path))
     cfg.update(
         {
             "model": args.model,
@@ -428,6 +461,10 @@ def main():
     save_json(output_dir / "finetune_results.json", results)
     save_json(best_model_dir / "finetune_config.json", results)
     print(f"Saved results to {output_dir}")
+
+
+def main() -> None:
+    run(parse_args())
 
 
 if __name__ == "__main__":

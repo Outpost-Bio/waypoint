@@ -127,12 +127,12 @@ The script will:
 
 ## Fine-tuning on Your Own Labels
 
-Use `finetune.py` to fine-tune a published Waypoint checkpoint from the Hugging Face Hub, or a local checkpoint such as `outputs/pretrain/best_model`, on your own labelled data. The task-specific inputs are command-line arguments; the config file contains the remaining fine-tuning settings.
+Use `waypoint finetune` to fine-tune a published Waypoint checkpoint from the Hugging Face Hub, or a local checkpoint such as `outputs/pretrain/best_model`, on your own labelled data. The task-specific inputs are command-line arguments; the config file contains the remaining fine-tuning settings.
 
 The input must be a waypoint-format `.parquet`/`.csv`/`.tsv` with `Taxa`, `Relative Abundances`, and a target column. If your labels live in a separate metadata table, merge them when preparing the dataset:
 
 ```bash
-python prepare_dataset.py \
+waypoint prepare-dataset \
     --input my_matrix.csv \
     --metadata sample_labels.csv \
     --output my_dataset.parquet
@@ -141,7 +141,7 @@ python prepare_dataset.py \
 Classification example (Compass `mgnify-biomes`, target `Biome 1`):
 
 ```bash
-python finetune.py \
+waypoint finetune \
     --model outpost-bio/Waypoint-6m \
     --data data/compass_biome1_smoke.parquet \
     --output_dir outputs/finetune_biome1 \
@@ -150,10 +150,10 @@ python finetune.py \
     --config configs/finetune_classification.yaml
 ```
 
-Regression example (Compass `mastrorilli`, target `Degradation Rate`; includes `Drug` as a categorical covariate, matching `benchmark.py`):
+Regression example (Compass `mastrorilli`, target `Degradation Rate`; includes `Drug` as a categorical covariate, matching `waypoint benchmark`):
 
 ```bash
-python finetune.py \
+waypoint finetune \
     --model outpost-bio/Waypoint-6m \
     --data data/compass_degradation_smoke.parquet \
     --output_dir outputs/finetune_degradation \
@@ -163,7 +163,7 @@ python finetune.py \
     --config configs/finetune_regression.yaml
 ```
 
-The config is flat and contains settings such as `max_length`, split fractions, batch size, learning rate, and early stopping patience. To add a categorical covariate, pass `--covariate_column COLUMN`. To use LoRA, set `use_lora: true`; the default target modules are GPT-2 style attention/projection layers (`c_attn`, `c_proj`). By default, `finetune.py` makes a random 80/10/10 train/validation/test split. To use predefined splits, set `split_column` to a column with values such as `train`, `validation`, and `test`. Outputs include `finetune_results.json`, per-split metric JSON files, checkpoints, and `best_model/` with the tokenizer, base model, fine-tuned head/adaptor state, and fine-tuning metadata.
+The config is flat and contains settings such as `max_length`, split fractions, batch size, learning rate, and early stopping patience. To add a categorical covariate, pass `--covariate_column COLUMN`. To use LoRA, set `use_lora: true`; the default target modules are GPT-2 style attention/projection layers (`c_attn`, `c_proj`). By default, `waypoint finetune` makes a random 80/10/10 train/validation/test split. To use predefined splits, set `split_column` to a column with values such as `train`, `validation`, and `test`. Outputs include `finetune_results.json`, per-split metric JSON files, checkpoints, and `best_model/` with the tokenizer, base model, fine-tuned head/adaptor state, and fine-tuning metadata.
 
 ### `benchmark_results.json` structure
 
@@ -173,7 +173,7 @@ The file is one JSON object. `results` has one object per benchmark task (eight 
 
 ```
 benchmark_results.json
-├── model                 string — same value as benchmark.py --model
+├── model                 string — same value as `waypoint benchmark --model`
 ├── final_score           number — arithmetic mean of every results[].score
 └── results               array of objects, one per task
     └── [each element]
@@ -312,30 +312,22 @@ df.to_parquet("my_dataset.parquet")
 ## Repository Structure
 
 ```
-├── pretrain.py              # Pretraining script
-├── benchmark.py             # Benchmarking script
-├── finetune.py              # Fine-tune on user-provided labelled data
-├── embed.py                 # Generate per-sample embeddings from a pretrained model
-├── prepare_dataset.py       # Convert an abundance matrix into a waypoint-format file
 ├── examples/
-│   └── abundance_matrix.tsv       # MGnify-style example input for prepare_dataset.py
-├── configs/
-│   ├── models/                    # Model architecture configs (GPT2 6M–170M)
-│   │   ├── gpt2-6m-mgm.yaml
-│   │   ├── gpt2-6m.yaml
-│   │   ├── gpt2-10m.yaml
-│   │   ├── ...
-│   │   └── gpt2-170m.yaml
-│   ├── pretraining.yaml          # Pretraining hyperparameters
-│   ├── benchmark.yaml            # Fine-tuning hyperparameters for benchmarking
-│   ├── finetune_classification.yaml
-│   └── finetune_regression.yaml
+│   └── abundance_matrix.tsv       # MGnify-style example input for `waypoint prepare-dataset`
 ├── src/
-│   ├── tokenizer.py         # TaxonomicTokenizer (standalone, no private deps)
-│   ├── dataset.py           # Torch datasets + waypoint-format I/O helpers
-│   ├── abundance_matrix.py  # Convert sample x taxa matrices into waypoint format
-│   ├── models.py            # Classification/regression heads
-│   └── scoring.py           # Metric computation and task scoring
+│   └── waypoint_bio/
+│       ├── cli.py                 # `waypoint` command dispatcher
+│       ├── pretrain.py            # Pretraining command
+│       ├── benchmark.py           # Compass benchmark command
+│       ├── finetune.py            # User-provided labelled-data fine-tuning command
+│       ├── embed.py               # Generate per-sample embeddings
+│       ├── prepare_dataset.py     # Convert abundance matrices into waypoint format
+│       ├── tokenizer.py           # TaxonomicTokenizer
+│       ├── dataset.py             # Torch datasets + waypoint-format I/O helpers
+│       ├── abundance_matrix.py    # Matrix conversion helpers
+│       ├── models.py              # Classification/regression heads
+│       ├── scoring.py             # Metric computation and task scoring
+│       └── configs/               # Bundled model/training/fine-tuning configs
 ├── pyproject.toml
 └── README.md
 ```

@@ -8,6 +8,7 @@ import importlib
 _SUBCOMMANDS = {
     "pretrain":         ("waypoint_bio.pretrain",         "Pretrain a microbiome GPT2 model"),
     "benchmark":        ("waypoint_bio.benchmark",        "Benchmark a model on the Compass tasks"),
+    "finetune":         ("waypoint_bio.finetune",         "Fine-tune a Waypoint model on labelled data"),
     "embed":            ("waypoint_bio.embed",            "Generate per-sample embeddings"),
     "prepare-dataset":  ("waypoint_bio.prepare_dataset",  "Convert an abundance matrix into waypoint format"),
 }
@@ -18,7 +19,7 @@ def main() -> None:
     sub = parser.add_subparsers(
         dest="cmd",
         required=True,
-        metavar="{pretrain,benchmark,embed,prepare-dataset}",
+        metavar="{pretrain,benchmark,finetune,embed,prepare-dataset}",
     )
     for name, (_module_path, help_text) in _SUBCOMMANDS.items():
         # Eager add_arguments() would pull in torch via pretrain/benchmark/embed,
