@@ -1,9 +1,25 @@
 [project]
-name = "microbiome-pretrain-benchmark"
+name = "waypoint-bio"
 version = "0.1.0"
-description = "Add your description here"
+description = "Microbiome foundation models — pretraining, benchmarking, and embedding utilities for Waypoint."
 readme = "README.md"
 requires-python = ">=3.10"
+license = { file = "LICENSE.txt" }
+authors = [
+    { name = "Outpost Bio", email = "neythen@outpost.bio" },
+]
+keywords = ["microbiome", "foundation-models", "transformers", "bioinformatics", "metagenomics"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
 dependencies = [
     "datasets",
     "tqdm",
@@ -12,4 +28,22 @@ dependencies = [
     "transformers",
     "accelerate",
     "scikit-learn",
+    "pandas",
+    "pyarrow",
+    "numpy",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Outpost-Bio/waypoint"
+Repository = "https://github.com/Outpost-Bio/waypoint"
+"Bug Tracker" = "https://github.com/Outpost-Bio/waypoint/issues"
+
+[project.scripts]
+waypoint = "waypoint_bio.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/waypoint_bio"]

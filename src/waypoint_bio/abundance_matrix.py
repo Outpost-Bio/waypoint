@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.tokenizer import TAXON_RANK_PREFIXES
+from waypoint_bio.tokenizer import TAXON_RANK_PREFIXES
 
 
 def _format_taxon_columns(columns, taxonomy_format: str) -> list[str]:

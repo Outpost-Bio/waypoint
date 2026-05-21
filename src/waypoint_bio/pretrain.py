@@ -6,9 +6,9 @@ Downloads data from HuggingFace Hub (outpost-bio/Atlas), builds a
 TaxonomicTokenizer, and trains with next-token prediction.
 
 Usage:
-    python pretrain.py \\
+    waypoint pretrain \\
         --model_config configs/models/gpt2-6m-mgm.yaml \\
-        --pretrain_config configs/pretraining/gpt2.yaml \\
+        --pretrain_config configs/pretraining.yaml \\
         --output_dir outputs/pretrain
 """
 
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from importlib.resources import files
 from pathlib import Path
 
 import yaml
@@ -30,27 +31,51 @@ from transformers import (
     TrainingArguments,
 )
 
-from src.dataset import (
+from waypoint_bio.dataset import (
     MicrobiomePretrainingDataset,
     compute_token_std_means,
     load_waypoint_dataframe,
 )
-from src.tokenizer import TaxonomicTokenizer
+from waypoint_bio.tokenizer import TaxonomicTokenizer
 
 HF_DATASET = "outpost-bio/Atlas"
 
+_PKG = files("waypoint_bio")
+DEFAULT_MODEL_CONFIG = str(_PKG / "configs" / "models" / "gpt2-6m-mgm.yaml")
+DEFAULT_PRETRAIN_CONFIG = str(_PKG / "configs" / "pretraining.yaml")
 
-def main():
-    parser = argparse.ArgumentParser(description="Pretrain a microbiome language model")
+
+def _resolve_config_path(value: str) -> str:
+    """Resolve a config path, falling back to the bundled `configs/` tree.
+
+    If the user passes a path that exists on disk, return it unchanged. Otherwise
+    try to look the same path up under the package's bundled configs, so
+    `--model_config configs/models/gpt2-45m.yaml` works from any cwd in a
+    pip-installed environment.
+    """
+    if Path(value).exists():
+        return value
+    bundled = Path(str(_PKG)) / value
+    if bundled.exists():
+        return str(bundled)
+    stripped = value.lstrip("/")
+    if stripped.startswith("configs/"):
+        bundled = Path(str(_PKG)) / stripped
+        if bundled.exists():
+            return str(bundled)
+    return value
+
+
+def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--model_config",
-        default="configs/models/gpt2-6m-mgm.yaml",
-        help="Path to model architecture config YAML (in configs/models/)",
+        default=DEFAULT_MODEL_CONFIG,
+        help="Path to model architecture config YAML (bundled defaults under waypoint_bio/configs/models/).",
     )
     parser.add_argument(
         "--pretrain_config",
-        default="configs/pretraining.yaml",
-        help="Path to pretraining hyperparameter config YAML (in configs/pretraining/)",
+        default=DEFAULT_PRETRAIN_CONFIG,
+        help="Path to pretraining hyperparameter config YAML (bundled default at waypoint_bio/configs/pretraining.yaml).",
     )
     parser.add_argument(
         "--output_dir",
@@ -72,11 +97,12 @@ def main():
             f"{HF_DATASET} from the HuggingFace Hub."
         ),
     )
-    args = parser.parse_args()
 
-    with open(args.model_config) as f:
+
+def run(args: argparse.Namespace) -> None:
+    with open(_resolve_config_path(args.model_config)) as f:
         model_cfg = yaml.safe_load(f)
-    with open(args.pretrain_config) as f:
+    with open(_resolve_config_path(args.pretrain_config)) as f:
         train_cfg = yaml.safe_load(f)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -227,6 +253,12 @@ def main():
         json.dump({"model": model_cfg, "training": train_cfg}, f, indent=2)
 
     print("Pretraining complete!")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Pretrain a microbiome language model")
+    add_arguments(parser)
+    run(parser.parse_args())
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from src.tokenizer import TaxonomicTokenizer
+from waypoint_bio.tokenizer import TaxonomicTokenizer
 
 
 # ---------------------------------------------------------------------------
