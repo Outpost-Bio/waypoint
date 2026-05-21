@@ -15,4 +15,5 @@ dependencies = [
     "plotly",
     "ipykernel",
     "nbformat>=5.10.4",
+    "peft",
 ]

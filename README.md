@@ -144,7 +144,7 @@ python finetune.py \
     --config configs/finetune_regression.yaml
 ```
 
-The config is flat and contains settings such as `max_length`, split fractions, batch size, learning rate, and early stopping patience. By default, `finetune.py` makes a random 80/10/10 train/validation/test split. To use predefined splits, set `split_column` to a column with values such as `train`, `validation`, and `test`. Outputs include `finetune_results.json`, per-split metric JSON files, checkpoints, and `best_model/` with the tokenizer, base model, fine-tuned head state, and fine-tuning metadata.
+The config is flat and contains settings such as `max_length`, split fractions, batch size, learning rate, and early stopping patience. To use LoRA, set `use_lora: true`; the default target modules are GPT-2 style attention/projection layers (`c_attn`, `c_proj`). By default, `finetune.py` makes a random 80/10/10 train/validation/test split. To use predefined splits, set `split_column` to a column with values such as `train`, `validation`, and `test`. Outputs include `finetune_results.json`, per-split metric JSON files, checkpoints, and `best_model/` with the tokenizer, base model, fine-tuned head/adaptor state, and fine-tuning metadata.
 
 ### `benchmark_results.json` structure
 

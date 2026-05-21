@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 import torch
 import yaml
+from peft import LoraConfig, TaskType, get_peft_model
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 from transformers import AutoModel, EarlyStoppingCallback, Trainer, TrainingArguments
@@ -36,7 +37,6 @@ from src.dataset import (
 from src.models import ClassificationModel, RegressionModel
 from src.scoring import predictions_to_arrays, score_task
 from src.tokenizer import load_tokenizer
-
 
 DEFAULTS = {
     "split_column": None,
@@ -56,13 +56,24 @@ DEFAULTS = {
     "logging_steps": 5,
     "patience": 5,
     "save_total_limit": 1,
+    "use_lora": False,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "lora_target_modules": ["c_attn", "c_proj"],
+    "lora_bias": "none",
+    "lora_fan_in_fan_out": True,
 }
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Fine-tune a Waypoint model")
-    parser.add_argument("--model", required=True, help="HF model id or local model path")
-    parser.add_argument("--data", required=True, help="Prepared waypoint-format data file")
+    parser.add_argument(
+        "--model", required=True, help="HF model id or local model path"
+    )
+    parser.add_argument(
+        "--data", required=True, help="Prepared waypoint-format data file"
+    )
     parser.add_argument("--output_dir", required=True, help="Directory for outputs")
     parser.add_argument(
         "--task_type",
@@ -85,10 +96,30 @@ def load_config(path: str | Path) -> dict[str, Any]:
     return {**DEFAULTS, **cfg}
 
 
+def maybe_apply_lora(base_model, cfg: dict[str, Any]):
+    if not cfg["use_lora"]:
+        return base_model
+
+    lora_config = LoraConfig(
+        task_type=TaskType.FEATURE_EXTRACTION,
+        r=cfg["lora_r"],
+        lora_alpha=cfg["lora_alpha"],
+        lora_dropout=cfg["lora_dropout"],
+        target_modules=cfg["lora_target_modules"],
+        bias=cfg["lora_bias"],
+        fan_in_fan_out=cfg["lora_fan_in_fan_out"],
+    )
+    model = get_peft_model(base_model, lora_config)
+    model.print_trainable_parameters()
+    return model
+
+
 def require_columns(df: pd.DataFrame, columns: list[str]) -> None:
     missing = [col for col in columns if col not in df.columns]
     if missing:
-        raise ValueError(f"Missing columns {missing}. Available columns: {list(df.columns)}")
+        raise ValueError(
+            f"Missing columns {missing}. Available columns: {list(df.columns)}"
+        )
 
 
 def prepare_dataframe(df: pd.DataFrame, cfg: dict[str, Any]) -> pd.DataFrame:
@@ -256,6 +287,7 @@ def main():
     tokenizer = load_tokenizer(cfg["model"])
     token_std_means = try_load_token_std_means(cfg["model"])
     base_model = AutoModel.from_pretrained(cfg["model"], trust_remote_code=True)
+    base_model = maybe_apply_lora(base_model, cfg)
 
     label_maps = None
     class_weights = None
@@ -328,9 +360,7 @@ def main():
     )
     callbacks = []
     if cfg["patience"] > 0:
-        callbacks.append(
-            EarlyStoppingCallback(early_stopping_patience=cfg["patience"])
-        )
+        callbacks.append(EarlyStoppingCallback(early_stopping_patience=cfg["patience"]))
 
     trainer = Trainer(
         model=model,
