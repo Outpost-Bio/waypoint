@@ -132,7 +132,7 @@ python finetune.py \
     --config configs/finetune_classification.yaml
 ```
 
-Regression example (Compass `mastrorilli`, target `Degradation Rate`; uses `Drug` automatically when present):
+Regression example (Compass `mastrorilli`, target `Degradation Rate`; includes `Drug` as a categorical covariate, matching `benchmark.py`):
 
 ```bash
 python finetune.py \
@@ -141,10 +141,11 @@ python finetune.py \
     --output_dir outputs/finetune_degradation \
     --task_type regression \
     --target "Degradation Rate" \
+    --covariate_column Drug \
     --config configs/finetune_regression.yaml
 ```
 
-The config is flat and contains settings such as `max_length`, split fractions, batch size, learning rate, and early stopping patience. To use LoRA, set `use_lora: true`; the default target modules are GPT-2 style attention/projection layers (`c_attn`, `c_proj`). By default, `finetune.py` makes a random 80/10/10 train/validation/test split. To use predefined splits, set `split_column` to a column with values such as `train`, `validation`, and `test`. Outputs include `finetune_results.json`, per-split metric JSON files, checkpoints, and `best_model/` with the tokenizer, base model, fine-tuned head/adaptor state, and fine-tuning metadata.
+The config is flat and contains settings such as `max_length`, split fractions, batch size, learning rate, and early stopping patience. To add a categorical covariate, pass `--covariate_column COLUMN`; if omitted, `finetune.py` preserves the benchmark behavior and uses `Drug` automatically when that column is present. To use LoRA, set `use_lora: true`; the default target modules are GPT-2 style attention/projection layers (`c_attn`, `c_proj`). By default, `finetune.py` makes a random 80/10/10 train/validation/test split. To use predefined splits, set `split_column` to a column with values such as `train`, `validation`, and `test`. Outputs include `finetune_results.json`, per-split metric JSON files, checkpoints, and `best_model/` with the tokenizer, base model, fine-tuned head/adaptor state, and fine-tuning metadata.
 
 ### `benchmark_results.json` structure
 

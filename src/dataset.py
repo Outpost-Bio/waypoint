@@ -198,7 +198,7 @@ class MicrobiomeBenchmarkDataset(Dataset):
     """Torch dataset for fine-tuning on benchmark tasks (classification / regression).
 
     Each sample becomes: [BOS] + sorted_token_ids + [EOS], padded to max_length,
-    plus labels/targets and optional drug one-hot features.
+    plus labels/targets and an optional categorical covariate one-hot feature.
     """
 
     def __init__(
@@ -208,7 +208,8 @@ class MicrobiomeBenchmarkDataset(Dataset):
         targets: list[str],
         task_type: Literal["classification", "regression"],
         label_maps: dict[str, dict[str, int]] | None = None,
-        drug_map: dict[str, int] | None = None,
+        covariate_map: dict[str, int] | None = None,
+        covariate_column: str = "Drug",
         max_length: int = 512,
         token_std_means: pd.DataFrame | None = None,
         filter_unk_taxa: bool = True,
@@ -218,7 +219,8 @@ class MicrobiomeBenchmarkDataset(Dataset):
         self.task_type = task_type
         self.targets = targets
         self.label_maps = label_maps
-        self.drug_dim = len(drug_map) if drug_map else 0
+        self.covariate_dim = len(covariate_map) if covariate_map else 0
+        self.covariate_column = covariate_column
 
         # For ClassificationModel: number of classes per target
         self.label_dims: list[int] | None = None
@@ -290,13 +292,13 @@ class MicrobiomeBenchmarkDataset(Dataset):
                 target_vals = [float(row[t]) for t in targets]
                 sample["targets"] = torch.tensor(target_vals, dtype=torch.float)
 
-            # Drug one-hot
-            if drug_map is not None:
-                drug_oh = torch.zeros(len(drug_map), dtype=torch.float)
-                drug_val = row.get("Drug")
-                if pd.notna(drug_val) and drug_val in drug_map:
-                    drug_oh[drug_map[drug_val]] = 1.0
-                sample["drug_onehot"] = drug_oh
+            # Optional categorical covariate one-hot.
+            if covariate_map is not None:
+                covariate_oh = torch.zeros(len(covariate_map), dtype=torch.float)
+                covariate_val = row.get(covariate_column)
+                if pd.notna(covariate_val) and covariate_val in covariate_map:
+                    covariate_oh[covariate_map[covariate_val]] = 1.0
+                sample["covariate_onehot"] = covariate_oh
 
             self.samples.append(sample)
 
@@ -308,7 +310,7 @@ class MicrobiomeBenchmarkDataset(Dataset):
 
 
 # ---------------------------------------------------------------------------
-# Helpers for building label / drug maps
+# Helpers for building label / covariate maps
 # ---------------------------------------------------------------------------
 
 
@@ -325,12 +327,10 @@ def build_label_maps(
     return label_maps
 
 
-def build_drug_map(df: pd.DataFrame) -> dict[str, int]:
-    """Build {drug_name: int_index} from the training split."""
-    unique_drugs = sorted(
-        [str(v) for v in df["Drug"].dropna().unique()]
-    )
-    return {d: i for i, d in enumerate(unique_drugs)}
+def build_covariate_map(df: pd.DataFrame, column: str) -> dict[str, int]:
+    """Build {category_value: int_index} from a categorical covariate column."""
+    unique_values = sorted([str(v) for v in df[column].dropna().unique()])
+    return {value: i for i, value in enumerate(unique_values)}
 
 
 # ---------------------------------------------------------------------------

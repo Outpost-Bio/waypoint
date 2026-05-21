@@ -29,7 +29,7 @@ from transformers import AutoModel, EarlyStoppingCallback, Trainer, TrainingArgu
 
 from src.dataset import (
     MicrobiomeBenchmarkDataset,
-    build_drug_map,
+    build_covariate_map,
     build_label_maps,
     load_waypoint_dataframe,
     try_load_token_std_means,
@@ -82,6 +82,14 @@ def parse_args():
         help="Fine-tuning task type",
     )
     parser.add_argument("--target", required=True, help="Target column in --data")
+    parser.add_argument(
+        "--covariate_column",
+        default=None,
+        help=(
+            "Optional categorical covariate column to one-hot encode. "
+            "If omitted, uses Drug automatically when present."
+        ),
+    )
     parser.add_argument(
         "--config",
         required=True,
@@ -188,7 +196,7 @@ def collate_fn(batch):
     out = {}
     for key in batch[0]:
         vals = torch.stack([sample[key] for sample in batch])
-        out[key] = vals.float() if key in ("targets", "drug_onehot") else vals
+        out[key] = vals.float() if key in ("targets", "covariate_onehot") else vals
     return out
 
 
@@ -266,6 +274,7 @@ def main():
             "output_dir": args.output_dir,
             "task_type": args.task_type,
             "targets": [args.target],
+            "covariate_column": args.covariate_column,
         }
     )
     output_dir = Path(cfg["output_dir"])
@@ -291,20 +300,29 @@ def main():
 
     label_maps = None
     class_weights = None
-    drug_map = build_drug_map(train_df) if "Drug" in train_df.columns else None
+    covariate_column = cfg["covariate_column"]
+
+    if covariate_column is not None:
+        require_columns(train_df, [covariate_column])
+    covariate_map = (
+        build_covariate_map(train_df, covariate_column)
+        if covariate_column is not None
+        else None
+    )
     if cfg["task_type"] == "classification":
         label_maps = build_label_maps(train_df, cfg["targets"])
         class_weights = get_class_weights(train_df, cfg["targets"], label_maps)
         print(f"Label maps: {label_maps}")
-    if drug_map is not None:
-        print(f"Drug categories: {len(drug_map)}")
+    if covariate_map is not None:
+        print(f"Covariate {covariate_column!r} categories: {len(covariate_map)}")
 
     dataset_kwargs = dict(
         tokenizer=tokenizer,
         targets=cfg["targets"],
         task_type=cfg["task_type"],
         label_maps=label_maps,
-        drug_map=drug_map,
+        covariate_map=covariate_map,
+        covariate_column=covariate_column or "Drug",
         max_length=cfg["max_length"],
         token_std_means=token_std_means,
         filter_unk_taxa=cfg["filter_unk_taxa"],
@@ -323,7 +341,7 @@ def main():
             tokenizer=tokenizer,
             label_dims=train_ds.label_dims,
             pooling_strategy=cfg["pooling_strategy"],
-            drug_dim=len(drug_map) if drug_map else 0,
+            covariate_dim=len(covariate_map) if covariate_map else 0,
             class_weights=class_weights,
         )
         label_names = ["labels"]
@@ -333,7 +351,7 @@ def main():
             tokenizer=tokenizer,
             num_targets=len(cfg["targets"]),
             pooling_strategy=cfg["pooling_strategy"],
-            drug_dim=len(drug_map) if drug_map else 0,
+            covariate_dim=len(covariate_map) if covariate_map else 0,
         )
         label_names = ["targets"]
 
@@ -401,7 +419,8 @@ def main():
     results = {
         "config": cfg,
         "label_maps": label_maps,
-        "drug_map": drug_map,
+        "covariate_column": covariate_column,
+        "covariate_map": covariate_map,
         "validation_score": val_score,
         "validation_metrics": val_metrics,
         "test_score": test_score,

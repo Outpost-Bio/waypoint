@@ -38,7 +38,7 @@ from transformers import (
 
 from src.dataset import (
     MicrobiomeBenchmarkDataset,
-    build_drug_map,
+    build_covariate_map,
     build_label_maps,
     try_load_token_std_means,
 )
@@ -138,7 +138,7 @@ def collate_fn(batch):
     out = {}
     for k in keys:
         vals = torch.stack([b[k] for b in batch])
-        if k in ("targets", "drug_onehot"):
+        if k in ("targets", "covariate_onehot"):
             vals = vals.float()
         out[k] = vals
     return out
@@ -219,7 +219,7 @@ def run_task(
     task_name = task_def["name"]
     task_type = task_def["task_type"]
     targets = task_def["targets"]
-    has_drug = "Drug" in task_def["features"]
+    covariate_column = "Drug" if "Drug" in task_def["features"] else None
 
     print(f"\n{'=' * 60}")
     print(f"Task: {task_name} ({task_type})")
@@ -232,11 +232,11 @@ def run_task(
 
     # Build maps from training data
     label_maps = None
-    drug_map = None
+    covariate_map = None
     if task_type == "classification":
         label_maps = build_label_maps(train_df, targets)
-    if has_drug:
-        drug_map = build_drug_map(train_df)
+    if covariate_column is not None:
+        covariate_map = build_covariate_map(train_df, covariate_column)
 
     # Create datasets
     ds_kwargs = dict(
@@ -244,7 +244,8 @@ def run_task(
         targets=targets,
         task_type=task_type,
         label_maps=label_maps,
-        drug_map=drug_map,
+        covariate_map=covariate_map,
+        covariate_column=covariate_column or "Drug",
         max_length=512,
         token_std_means=token_std_means,
         filter_unk_taxa=benchmark_cfg.get("filter_unk_taxa", True),
@@ -264,7 +265,7 @@ def run_task(
             base_model=base_model,
             tokenizer=tokenizer,
             num_targets=len(targets),
-            drug_dim=len(drug_map) if drug_map else 0,
+            covariate_dim=len(covariate_map) if covariate_map else 0,
             pooling_strategy=benchmark_cfg.get("pooling_strategy", "last_token"),
         )
     else:
@@ -275,7 +276,7 @@ def run_task(
             base_model=base_model,
             tokenizer=tokenizer,
             label_dims=train_ds.label_dims,
-            drug_dim=len(drug_map) if drug_map else 0,
+            covariate_dim=len(covariate_map) if covariate_map else 0,
             pooling_strategy=benchmark_cfg.get("pooling_strategy", "last_token"),
             class_weights=class_weights,
         )

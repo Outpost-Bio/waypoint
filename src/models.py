@@ -53,7 +53,7 @@ class ClassificationModel(nn.Module):
         tokenizer: PreTrainedTokenizerBase,
         label_dims: list[int],
         pooling_strategy: PoolingStrategy,
-        drug_dim: int = 0,
+        covariate_dim: int = 0,
         class_weights: list[torch.Tensor] | None = None,
     ):
         super().__init__()
@@ -61,8 +61,8 @@ class ClassificationModel(nn.Module):
         self.tokenizer = tokenizer
         self.num_labels = len(label_dims)
         self.label_dims = label_dims
-        self.drug_dim = drug_dim
-        hidden = base_model.config.hidden_size + drug_dim
+        self.covariate_dim = covariate_dim
+        hidden = base_model.config.hidden_size + covariate_dim
         self.heads = nn.ModuleList([nn.Linear(hidden, n) for n in label_dims])
         self.pooling_strategy: PoolingStrategy = pooling_strategy
         self.class_weights = class_weights
@@ -71,7 +71,7 @@ class ClassificationModel(nn.Module):
         self,
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor,
-        drug_onehot: torch.Tensor | None = None,
+        covariate_onehot: torch.Tensor | None = None,
         labels: torch.Tensor | None = None,
         **kwargs,
     ):
@@ -79,8 +79,8 @@ class ClassificationModel(nn.Module):
             input_ids=input_ids, attention_mask=attention_mask
         ).last_hidden_state
         pooled = _pool(hidden_states, attention_mask, self.pooling_strategy)
-        if drug_onehot is not None:
-            pooled = torch.cat([pooled, drug_onehot], dim=-1)
+        if covariate_onehot is not None:
+            pooled = torch.cat([pooled, covariate_onehot], dim=-1)
 
         logits_per_head = [head(pooled) for head in self.heads]
         logits_padded = pooled.new_full(
@@ -123,14 +123,14 @@ class RegressionModel(nn.Module):
         tokenizer: PreTrainedTokenizerBase,
         num_targets: int,
         pooling_strategy: PoolingStrategy,
-        drug_dim: int = 0,
+        covariate_dim: int = 0,
     ):
         super().__init__()
         self.base_model = base_model
         self.tokenizer = tokenizer
         self.num_targets = num_targets
-        self.drug_dim = drug_dim
-        hidden = base_model.config.hidden_size + drug_dim
+        self.covariate_dim = covariate_dim
+        hidden = base_model.config.hidden_size + covariate_dim
         self.heads = nn.ModuleList([nn.Linear(hidden, 1) for _ in range(num_targets)])
         self.pooling_strategy: PoolingStrategy = pooling_strategy
 
@@ -138,7 +138,7 @@ class RegressionModel(nn.Module):
         self,
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor,
-        drug_onehot: torch.Tensor | None = None,
+        covariate_onehot: torch.Tensor | None = None,
         targets: torch.Tensor | None = None,
         **kwargs,
     ):
@@ -146,8 +146,8 @@ class RegressionModel(nn.Module):
             input_ids=input_ids, attention_mask=attention_mask
         ).last_hidden_state
         pooled = _pool(hidden_states, attention_mask, self.pooling_strategy)
-        if drug_onehot is not None:
-            pooled = torch.cat([pooled, drug_onehot], dim=-1)
+        if covariate_onehot is not None:
+            pooled = torch.cat([pooled, covariate_onehot], dim=-1)
         preds = torch.cat([head(pooled) for head in self.heads], dim=-1)
 
         loss = None
