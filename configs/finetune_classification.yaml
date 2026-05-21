@@ -1,0 +1,22 @@
+# Fine-tuning settings for a classification task.
+# Pass model/data/output_dir/task_type/target on the command line.
+
+split_column: null
+val_fraction: 0.1
+test_fraction: 0.1
+
+max_length: 512
+pooling_strategy: last_token
+filter_unk_taxa: true
+
+seed: 42
+learning_rate: 0.00003
+num_epochs: 1
+batch_size: 64
+warmup_steps: 1000
+weight_decay: 0.001
+eval_strategy: steps
+eval_steps: 400
+logging_steps: 5
+patience: 5
+save_total_limit: 1

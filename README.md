@@ -107,6 +107,45 @@ The script will:
 3. Report per-task scores and the final benchmark score (mean across tasks)
 4. Save results to `outputs/benchmark/benchmark_results.json`
 
+## Fine-tuning on Your Own Labels
+
+Use `finetune.py` to fine-tune a published Waypoint checkpoint from the Hugging Face Hub, or a local checkpoint such as `outputs/pretrain/best_model`, on your own labelled data. The task-specific inputs are command-line arguments; the config file contains the remaining fine-tuning settings.
+
+The input must be a waypoint-format `.parquet`/`.csv`/`.tsv` with `Taxa`, `Relative Abundances`, and a target column. If your labels live in a separate metadata table, merge them when preparing the dataset:
+
+```bash
+python prepare_dataset.py \
+    --input my_matrix.csv \
+    --metadata sample_labels.csv \
+    --output my_dataset.parquet
+```
+
+Classification example (Compass `mgnify-biomes`, target `Biome 1`):
+
+```bash
+python finetune.py \
+    --model outpost-bio/Waypoint-6m \
+    --data data/compass_biome1_smoke.parquet \
+    --output_dir outputs/finetune_biome1 \
+    --task_type classification \
+    --target "Biome 1" \
+    --config configs/finetune_classification.yaml
+```
+
+Regression example (Compass `mastrorilli`, target `Degradation Rate`; uses `Drug` automatically when present):
+
+```bash
+python finetune.py \
+    --model outpost-bio/Waypoint-6m \
+    --data data/compass_degradation_smoke.parquet \
+    --output_dir outputs/finetune_degradation \
+    --task_type regression \
+    --target "Degradation Rate" \
+    --config configs/finetune_regression.yaml
+```
+
+The config is flat and contains settings such as `max_length`, split fractions, batch size, learning rate, and early stopping patience. By default, `finetune.py` makes a random 80/10/10 train/validation/test split. To use predefined splits, set `split_column` to a column with values such as `train`, `validation`, and `test`. Outputs include `finetune_results.json`, per-split metric JSON files, checkpoints, and `best_model/` with the tokenizer, base model, fine-tuned head state, and fine-tuning metadata.
+
 ### `benchmark_results.json` structure
 
 The file is one JSON object. `results` has one object per benchmark task (eight by default, or fewer if you pass `--tasks`).
@@ -256,6 +295,7 @@ df.to_parquet("my_dataset.parquet")
 ```
 ├── pretrain.py              # Pretraining script
 ├── benchmark.py             # Benchmarking script
+├── finetune.py              # Fine-tune on user-provided labelled data
 ├── embed.py                 # Generate per-sample embeddings from a pretrained model
 ├── prepare_dataset.py       # Convert an abundance matrix into a waypoint-format file
 ├── examples/
@@ -267,9 +307,10 @@ df.to_parquet("my_dataset.parquet")
 │   │   ├── gpt2-10m.yaml
 │   │   ├── ...
 │   │   └── gpt2-170m.yaml
-│   ├── pretraining/
-│   │   └── gpt2.yaml             # Pretraining hyperparameters
-│   └── benchmark.yaml            # Fine-tuning hyperparameters for benchmarking
+│   ├── pretraining.yaml          # Pretraining hyperparameters
+│   ├── benchmark.yaml            # Fine-tuning hyperparameters for benchmarking
+│   ├── finetune_classification.yaml
+│   └── finetune_regression.yaml
 ├── src/
 │   ├── tokenizer.py         # TaxonomicTokenizer (standalone, no private deps)
 │   ├── dataset.py           # Torch datasets + waypoint-format I/O helpers
