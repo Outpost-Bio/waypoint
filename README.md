@@ -16,7 +16,7 @@ Install from PyPI:
 pip install waypoint-bio
 ```
 
-This gives you the `waypoint` command with four subcommands: `pretrain`, `benchmark`, `embed`, and `prepare-dataset`. Configs and example data live inside the package, so no clone is required.
+This gives you the `waypoint` command with five subcommands: `pretrain`, `benchmark`, `finetune`, `embed`, and `prepare-dataset`. Configs and example data live inside the package, so no clone is required.
 
 ### For contributors
 
@@ -48,7 +48,7 @@ Then use `uv run waypoint <subcommand> ...` instead of `waypoint <subcommand> ..
 
    Or set **`HF_TOKEN`** to a [read token](https://huggingface.co/docs/hub/security-tokens) with access to those repos.
 
-`waypoint pretrain`, `waypoint benchmark`, and the manual download snippets below all use the same Hub authentication.
+All `waypoint` subcommands and the manual download snippets below share the same Hub authentication.
 
 ## Pretraining
 
