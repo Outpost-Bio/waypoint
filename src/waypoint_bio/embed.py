@@ -4,10 +4,10 @@ Generate sample embeddings using a pretrained Waypoint model.
 
 Input is a waypoint-format file (parquet/csv/tsv) with 'Taxa' and
 'Relative Abundances' columns. To start from a raw abundance matrix, run
-``prepare_dataset.py`` first to serialize it into this format.
+``waypoint prepare-dataset`` first to serialize it into this format.
 
 Usage:
-    python embed.py \\
+    waypoint embed \\
         --model outpost-bio/Waypoint-6m \\
         --data samples.parquet \\
         --output embeddings.parquet
@@ -24,14 +24,14 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import AutoModel
 
-from src.dataset import (
+from waypoint_bio.dataset import (
     _sort_by_abundance,
     _sort_by_zscore,
     load_waypoint_dataframe,
     try_load_token_std_means,
 )
-from src.models import _pool
-from src.tokenizer import load_tokenizer
+from waypoint_bio.models import _pool
+from waypoint_bio.tokenizer import load_tokenizer
 
 
 def tokenize_for_embedding(
@@ -99,8 +99,7 @@ def _resolve_device(requested: str | None) -> str:
     return "cpu"
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate Waypoint embeddings")
+def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--model",
         default="outpost-bio/Waypoint-6m",
@@ -111,8 +110,8 @@ def main():
         required=True,
         help=(
             "Path to a waypoint-format file (.parquet/.csv/.tsv) with 'Taxa' "
-            "and 'Relative Abundances' columns. Run prepare_dataset.py first "
-            "if you have an abundance matrix."
+            "and 'Relative Abundances' columns. Run `waypoint prepare-dataset` "
+            "first if you have an abundance matrix."
         ),
     )
     parser.add_argument(
@@ -141,8 +140,9 @@ def main():
         default=None,
         help="cuda | cpu | mps; auto-detected if omitted",
     )
-    args = parser.parse_args()
 
+
+def run(args: argparse.Namespace) -> None:
     # ------------------------------------------------------------------
     # 1. Load input data
     # ------------------------------------------------------------------
@@ -209,6 +209,12 @@ def main():
     else:
         out_df.to_parquet(output_path)
     print(f"Saved embeddings of shape {embeddings.shape} to {output_path}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate Waypoint embeddings")
+    add_arguments(parser)
+    run(parser.parse_args())
 
 
 if __name__ == "__main__":

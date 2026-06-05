@@ -8,19 +8,20 @@ final benchmark score.
 
 Usage:
     # Benchmark the published model
-    python benchmark.py --model outpost-bio/Waypoint-6m-mgm --output_dir outputs/benchmark
+    waypoint benchmark --model outpost-bio/Waypoint-6m-mgm --output_dir outputs/benchmark
 
     # Benchmark a locally pretrained model
-    python benchmark.py --model outputs/pretrain/best_model --output_dir outputs/benchmark
+    waypoint benchmark --model outputs/pretrain/best_model --output_dir outputs/benchmark
 
     # Run a single task for quick testing
-    python benchmark.py --model outpost-bio/Waypoint-6m-mgm --tasks 1 --output_dir outputs/benchmark
+    waypoint benchmark --model outpost-bio/Waypoint-6m-mgm --tasks 1 --output_dir outputs/benchmark
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+from importlib.resources import files
 from pathlib import Path
 
 import numpy as np
@@ -36,21 +37,45 @@ from transformers import (
     TrainingArguments,
 )
 
-from src.dataset import (
+from waypoint_bio.dataset import (
     MicrobiomeBenchmarkDataset,
     build_covariate_map,
     build_label_maps,
     try_load_token_std_means,
 )
-from src.models import ClassificationModel, RegressionModel
-from src.scoring import predictions_to_arrays, score_task
-from src.tokenizer import load_tokenizer
+from waypoint_bio.models import ClassificationModel, RegressionModel
+from waypoint_bio.scoring import predictions_to_arrays, score_task
+from waypoint_bio.tokenizer import load_tokenizer
 
 # ---------------------------------------------------------------------------
 # HuggingFace Hub identifiers
 # ---------------------------------------------------------------------------
 
 HF_BENCHMARK_DATASET = "outpost-bio/Compass"
+
+_PKG = files("waypoint_bio")
+DEFAULT_BENCHMARK_CONFIG = str(_PKG / "configs" / "benchmark.yaml")
+
+
+def _resolve_config_path(value: str) -> str:
+    """Resolve a config path, falling back to the bundled `configs/` tree.
+
+    If the user passes a path that exists on disk, return it unchanged. Otherwise
+    try to look the same path up under the package's bundled configs, so
+    `--config configs/benchmark.yaml` works from any cwd in a pip-installed
+    environment.
+    """
+    if Path(value).exists():
+        return value
+    bundled = Path(str(_PKG)) / value
+    if bundled.exists():
+        return str(bundled)
+    stripped = value.lstrip("/")
+    if stripped.startswith("configs/"):
+        bundled = Path(str(_PKG)) / stripped
+        if bundled.exists():
+            return str(bundled)
+    return value
 
 # ---------------------------------------------------------------------------
 # Task definitions: (name, hub_config, pre_filter, features, targets, task_type)
@@ -350,12 +375,11 @@ def run_task(
 
 
 # ---------------------------------------------------------------------------
-# Main
+# CLI
 # ---------------------------------------------------------------------------
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Benchmark a microbiome model")
+def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--model",
         default="outpost-bio/Waypoint-6m",
@@ -363,8 +387,8 @@ def main():
     )
     parser.add_argument(
         "--config",
-        default="configs/benchmark.yaml",
-        help="Path to benchmark config YAML",
+        default=DEFAULT_BENCHMARK_CONFIG,
+        help="Path to benchmark config YAML (bundled default at waypoint_bio/configs/benchmark.yaml).",
     )
     parser.add_argument(
         "--output_dir",
@@ -389,9 +413,10 @@ def main():
         default=None,
         help="Cap each split (train/val/test) at this many samples. Useful for quick smoke tests.",
     )
-    args = parser.parse_args()
 
-    with open(args.config) as f:
+
+def run(args: argparse.Namespace) -> None:
+    with open(_resolve_config_path(args.config)) as f:
         benchmark_cfg = yaml.safe_load(f)
 
     output_dir = Path(args.output_dir)
@@ -471,6 +496,12 @@ def main():
         json.dump(_convert(output), f, indent=2)
 
     print(f"\nResults saved to {results_file}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Benchmark a microbiome model")
+    add_arguments(parser)
+    run(parser.parse_args())
 
 
 if __name__ == "__main__":

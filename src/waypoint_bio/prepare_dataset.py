@@ -4,30 +4,30 @@ Convert a taxonomic abundance matrix into a serialized waypoint-format dataset.
 
 The output is a parquet file with two list-columns, ``Taxa`` and
 ``Relative Abundances``, indexed by sample ID. It can then be fed to any
-waypoint script that accepts a local dataset, e.g.:
+waypoint command that accepts a local dataset, e.g.:
 
-    python pretrain.py --data my_dataset.parquet ...
-    python embed.py    --data my_dataset.parquet ...
+    waypoint pretrain --data my_dataset.parquet ...
+    waypoint embed    --data my_dataset.parquet ...
 
 Usage:
     # MGnify-style TSV (taxa as rows, samples as columns, first column = lineage)
-    python prepare_dataset.py \\
+    waypoint prepare-dataset \\
         --input examples/abundance_matrix.tsv \\
         --output examples/abundance_matrix.parquet
 
     # Phyloseq-style CSV (samples as rows, taxa as columns)
-    python prepare_dataset.py \\
+    waypoint prepare-dataset \\
         --input my_matrix.csv \\
         --output my_dataset.parquet \\
         --orientation samples_as_rows
 
     # Bare genus names instead of full lineage strings
-    python prepare_dataset.py \\
+    waypoint prepare-dataset \\
         --input genus_matrix.csv --output genus.parquet \\
         --taxonomy_format genus
 
     # Attach per-sample metadata (labels) for benchmarking-style use
-    python prepare_dataset.py \\
+    waypoint prepare-dataset \\
         --input my_matrix.csv --output my_dataset.parquet \\
         --metadata sample_labels.csv
 """
@@ -39,7 +39,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.abundance_matrix import load_abundance_matrix, matrix_to_waypoint_df
+from waypoint_bio.abundance_matrix import load_abundance_matrix, matrix_to_waypoint_df
 
 
 def _load_metadata(path: Path) -> pd.DataFrame:
@@ -53,10 +53,7 @@ def _load_metadata(path: Path) -> pd.DataFrame:
     return df
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Convert an abundance matrix into a serialized waypoint dataset",
-    )
+def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--input",
         required=True,
@@ -104,8 +101,9 @@ def main():
         default=None,
         help="Optional CSV/TSV/parquet of per-sample metadata to merge in as extra columns (indexed by sample ID).",
     )
-    args = parser.parse_args()
 
+
+def run(args: argparse.Namespace) -> None:
     input_path = Path(args.input)
     output_path = Path(args.output)
 
@@ -140,6 +138,14 @@ def main():
             f"Unsupported output extension: {suffix!r}. Use .parquet, .csv, or .tsv."
         )
     print(f"Saved {len(df):,} samples to {output_path}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Convert an abundance matrix into a serialized waypoint dataset",
+    )
+    add_arguments(parser)
+    run(parser.parse_args())
 
 
 if __name__ == "__main__":
