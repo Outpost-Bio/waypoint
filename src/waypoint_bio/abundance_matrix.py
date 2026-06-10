@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from waypoint_bio._paths import resolve_packaged_path
 from waypoint_bio.tokenizer import TAXON_RANK_PREFIXES
 
 
@@ -139,8 +140,11 @@ def load_abundance_matrix(
         pass ``None`` to leave the default integer index.
     sep:
         CSV delimiter. Auto-detected from the file extension if omitted.
+
+    Paths that don't exist in the cwd fall back to the same relative path
+    bundled in the package, so ``examples/...`` files work without a clone.
     """
-    path = Path(path)
+    path = Path(resolve_packaged_path(path))
     if sep is None:
         sep = "\t" if path.suffix.lower() in (".tsv", ".tab") else ","
     df = pd.read_csv(path, sep=sep)
