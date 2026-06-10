@@ -19,6 +19,7 @@ import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
+from waypoint_bio._paths import resolve_packaged_path
 from waypoint_bio.tokenizer import TaxonomicTokenizer
 
 
@@ -350,8 +351,11 @@ def load_waypoint_dataframe(path: str | Path) -> pd.DataFrame:
 
     CSV/TSV files store lists as their string repr; this function parses
     them back with ``ast.literal_eval``. Prefer parquet for round-tripping.
+
+    Paths that don't exist in the cwd fall back to the same relative path
+    bundled in the package, so ``examples/...`` files work without a clone.
     """
-    path = Path(path)
+    path = Path(resolve_packaged_path(path))
     suffix = path.suffix.lower()
     if suffix == ".parquet":
         return pd.read_parquet(path)

@@ -39,10 +39,12 @@ from pathlib import Path
 
 import pandas as pd
 
+from waypoint_bio._paths import resolve_packaged_path
 from waypoint_bio.abundance_matrix import load_abundance_matrix, matrix_to_waypoint_df
 
 
 def _load_metadata(path: Path) -> pd.DataFrame:
+    path = Path(resolve_packaged_path(path))
     suffix = path.suffix.lower()
     if suffix == ".parquet":
         return pd.read_parquet(path)

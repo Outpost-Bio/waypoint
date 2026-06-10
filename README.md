@@ -133,9 +133,9 @@ The input must be a waypoint-format `.parquet`/`.csv`/`.tsv` with `Taxa`, `Relat
 
 ```bash
 waypoint prepare-dataset \
-    --input my_matrix.csv \
-    --metadata sample_labels.csv \
-    --output my_dataset.parquet
+    --input examples/abundance_matrix.tsv \
+    --metadata examples/sample_labels.csv \
+    --output examples/labelled_dataset.parquet
 ```
 
 Classification example (Compass `mgnify-biomes`, target `Biome 1`):
@@ -143,8 +143,8 @@ Classification example (Compass `mgnify-biomes`, target `Biome 1`):
 ```bash
 waypoint finetune \
     --model outpost-bio/Waypoint-6m \
-    --data data/compass_biome1_smoke.parquet \
-    --output_dir outputs/finetune_biome1 \
+    --data examples/finetune_classification.parquet \
+    --output_dir outputs/finetune_classification \
     --task_type classification \
     --target "Biome 1" \
     --config configs/finetune_classification.yaml
@@ -155,7 +155,7 @@ Regression example (Compass `mastrorilli`, target `Degradation Rate`; includes `
 ```bash
 waypoint finetune \
     --model outpost-bio/Waypoint-6m \
-    --data data/compass_degradation_smoke.parquet \
+    --data examples/finetune_regression.parquet \
     --output_dir outputs/finetune_degradation \
     --task_type regression \
     --target "Degradation Rate" \
@@ -231,7 +231,7 @@ Use `waypoint embed` to produce one fixed-size embedding vector per sample with 
 ```bash
 waypoint embed \
     --model outpost-bio/Waypoint-6m \
-    --data path/to/samples.parquet \
+    --data examples/finetune_classification.parquet \
     --output embeddings.parquet
 ```
 
@@ -313,7 +313,10 @@ df.to_parquet("my_dataset.parquet")
 
 ```
 ├── examples/
-│   └── abundance_matrix.tsv       # MGnify-style example input for `waypoint prepare-dataset`
+│   ├── abundance_matrix.tsv             # MGnify-style example input for `waypoint prepare-dataset`
+│   ├── sample_labels.csv                # per-sample labels to merge via `prepare-dataset --metadata`
+│   ├── finetune_classification.parquet  # labelled example for `waypoint finetune` (classification)
+│   └── finetune_regression.parquet      # labelled example for `waypoint finetune` (regression)
 ├── src/
 │   └── waypoint_bio/
 │       ├── cli.py                 # `waypoint` command dispatcher
