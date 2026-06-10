@@ -231,7 +231,7 @@ Use `waypoint embed` to produce one fixed-size embedding vector per sample with 
 ```bash
 waypoint embed \
     --model outpost-bio/Waypoint-6m \
-    --data path/to/samples.parquet \
+    --data examples/finetune_classification.parquet \
     --output embeddings.parquet
 ```
 
