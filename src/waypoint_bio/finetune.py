@@ -264,6 +264,47 @@ def save_json(path: Path, payload: dict[str, Any]) -> None:
         json.dump(json_safe(payload), f, indent=2)
 
 
+def save_training_log(trainer: Trainer, output_dir: Path) -> None:
+    """Dump the Trainer's log history as CSV + an interactive plotly HTML plot.
+
+    Writes:
+        <output_dir>/training_log.csv   — every row Trainer logged (train + eval).
+        <output_dir>/training_log.html  — line plot of train loss + eval loss vs step.
+
+    Silently no-ops if the trainer produced no log rows (very short runs, crashes).
+    """
+    log_history = list(trainer.state.log_history)
+    if not log_history:
+        return
+
+    df = pd.DataFrame(log_history)
+    csv_path = output_dir / "training_log.csv"
+    df.to_csv(csv_path, index=False)
+    print(f"Wrote training log to {csv_path}")
+
+    # Interactive plot — plotly is already a top-level waypoint-bio dep.
+    import plotly.graph_objects as go
+
+    train_rows = df[df["loss"].notna()]   if "loss"      in df.columns else pd.DataFrame()
+    eval_rows  = df[df["eval_loss"].notna()] if "eval_loss" in df.columns else pd.DataFrame()
+
+    fig = go.Figure()
+    if not train_rows.empty:
+        fig.add_scatter(x=train_rows["step"], y=train_rows["loss"],
+                        mode="lines", name="train loss")
+    if not eval_rows.empty:
+        fig.add_scatter(x=eval_rows["step"], y=eval_rows["eval_loss"],
+                        mode="lines+markers", name="eval loss")
+    fig.update_layout(
+        title="Fine-tune loss over training steps",
+        xaxis_title="step", yaxis_title="loss",
+        legend_title="", template="plotly_white",
+    )
+    html_path = output_dir / "training_log.html"
+    fig.write_html(html_path, include_plotlyjs="cdn")
+    print(f"Wrote training log plot to {html_path}")
+
+
 def evaluate(
     trainer: Trainer,
     dataset: MicrobiomeBenchmarkDataset,
@@ -423,6 +464,9 @@ def run(args: argparse.Namespace) -> None:
 
     print("Fine-tuning ...")
     trainer.train()
+
+    # Dump train/eval loss history to disk (CSV + interactive HTML plot).
+    save_training_log(trainer, output_dir)
 
     print("Evaluating ...")
     val_score, val_metrics = evaluate(

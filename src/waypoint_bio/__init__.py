@@ -1,4 +1,4 @@
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 
 # Lazy re-exports: `from waypoint_bio import TaxonomicTokenizer` works without
 # eagerly importing torch / transformers on every `waypoint --help`.
