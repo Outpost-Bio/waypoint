@@ -1,6 +1,6 @@
 [project]
 name = "waypoint-bio"
-version = "1.0.2"
+version = "1.0.3"
 description = "Microbiome foundation models — pretraining, benchmarking, and embedding utilities for Waypoint."
 readme = "README.md"
 requires-python = ">=3.10"
