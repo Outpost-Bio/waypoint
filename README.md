@@ -163,7 +163,24 @@ waypoint finetune \
     --config configs/finetune_regression.yaml
 ```
 
-The config is flat and contains settings such as `max_length`, split fractions, batch size, learning rate, and early stopping patience. To add a categorical covariate, pass `--covariate_column COLUMN`. To use LoRA, set `use_lora: true`; the default target modules are GPT-2 style attention/projection layers (`c_attn`, `c_proj`). By default, `waypoint finetune` makes a random 80/10/10 train/validation/test split. To use predefined splits, set `split_column` to a column with values such as `train`, `validation`, and `test`. Outputs include `finetune_results.json`, per-split metric JSON files, checkpoints, and `best_model/` with the tokenizer, base model, fine-tuned head/adaptor state, and fine-tuning metadata.
+The config is flat and contains settings such as `max_length`, split fractions, batch size, learning rate, and early stopping patience. To add a categorical covariate, pass `--covariate_column COLUMN`. To use LoRA, set `use_lora: true`; the default target modules are GPT-2 style attention/projection layers (`c_attn`, `c_proj`), and the adapter weights are merged back into the base transformer before saving so downstream `waypoint embed` / `waypoint benchmark` load the checkpoint with a plain `AutoModel.from_pretrained`. By default, `waypoint finetune` makes a random 80/10/10 train/validation/test split. To use predefined splits, set `split_column` to a column with values such as `train`, `validation`, and `test`.
+
+Outputs written to `--output_dir`:
+
+- `best_model/` — the fine-tuned base transformer (standard HF format), plus tokenizer and `token_std_means.parquet`, ready for `waypoint embed --model outputs/my_finetune/best_model`.
+- `finetuned_model_state.pt` — full torch state dict inside `best_model/` (base transformer + head + covariate embedding), for anyone who wants to keep training.
+- `validation_metrics.json` / `test_metrics.json` — per-split scores from the fine-tuned head (benchmark-equivalent numbers).
+- `training_log.csv` + `training_log.html` — every logged row of `trainer.state.log_history` (train loss, eval loss, LR, epoch, step) as an easy-to-parse CSV plus an interactive plotly line plot.
+- `finetune_results.json` — summary object with the run config, label maps, covariate map, and val/test scores.
+
+### Interactive walkthroughs (webinar notebooks)
+
+Two Jupyter notebooks in `examples/webinar/` walk through fine-tuning end-to-end using the `waypoint` CLI under the hood and a shared `finetune.yaml`:
+
+- `webinar_finetune_regression.ipynb` — Compass task 6 (`mastrorilli`, drug degradation rate).
+- `webinar_finetune_classification.ipynb` — Compass task 8 (`roswall`, infant delivery mode); also plots PCA / t-SNE / 3D embeddings and a logistic-regression baseline vs the fine-tuned model.
+
+Both default to `USE_CACHE = True` and write their intermediate artifacts under `examples/webinar/artifacts/` — designed to be run once ahead of time, then replayed instantly for a live demo. Helpers shared between the two notebooks (path management, PCA/t-SNE projection, linear-probe baselines, plotters) live in `examples/webinar/webinar_utils.py`.
 
 ### `benchmark_results.json` structure
 
@@ -316,7 +333,12 @@ df.to_parquet("my_dataset.parquet")
 │   ├── abundance_matrix.tsv             # MGnify-style example input for `waypoint prepare-dataset`
 │   ├── sample_labels.csv                # per-sample labels to merge via `prepare-dataset --metadata`
 │   ├── finetune_classification.parquet  # labelled example for `waypoint finetune` (classification)
-│   └── finetune_regression.parquet      # labelled example for `waypoint finetune` (regression)
+│   ├── finetune_regression.parquet      # labelled example for `waypoint finetune` (regression)
+│   └── webinar/                         # interactive Jupyter walkthroughs (see Fine-tuning section)
+│       ├── webinar_finetune_regression.ipynb
+│       ├── webinar_finetune_classification.ipynb
+│       ├── webinar_utils.py             # helpers shared by both notebooks
+│       └── finetune.yaml                # single config both notebooks pass to `waypoint finetune`
 ├── src/
 │   └── waypoint_bio/
 │       ├── cli.py                 # `waypoint` command dispatcher
