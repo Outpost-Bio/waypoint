@@ -1,37 +1,64 @@
-# Shared fine-tune config for the two webinar demo notebooks.
-#
-# Same knobs work reasonably for both the regression demo (task 6 / mastrorilli)
-# and the classification demo (task 8 / roswall). For your own data, copy this
-# file next to it and tweak num_epochs / learning_rate / warmup_steps / batch_size
-# for your dataset size.
+# Shared fine-tune config for the two webinar demo notebooks. Copy next to your
+# own data and tweak num_epochs / learning_rate / warmup_steps / batch_size for
+# your dataset size.
 
-split_column: null
-val_fraction: 0.15
-test_fraction: 0.15
+# --- Data splitting --------------------------------------------------------
+# Waypoint fine-tune splits your data into train / validation / test. Either
+# honour a Split column that already exists in the parquet, or let the script
+# make its own random split by fraction. Validation is used for early stopping
+# + best-checkpoint selection; test is held out for the reported score.
 
-max_length: 512
-pooling_strategy: last_token
-filter_unk_taxa: true
+split_column: null      # column naming the train/val/test split; null = random split.
+val_fraction: 0.15      # fraction held out for validation when split_column is null.
+test_fraction: 0.15     # fraction held out for test when split_column is null.
 
-seed: 42
-learning_rate: 3.0e-5
-num_epochs: 100
-batch_size: 32
-warmup_steps: 1000
-weight_decay: 0.001
-eval_strategy: steps
-eval_steps: 400
-logging_steps: 5
-patience: 5
-save_total_limit: 1
+# --- Tokenization & pooling ------------------------------------------------
+# How each microbiome sample gets turned into a fixed-size vector before the
+# task head. These need to match how the base model was pretrained (Waypoint-6m
+# = 512 tokens, last-token pooling); changing them requires re-pretraining.
 
-# Parameter-efficient fine-tuning. Leave disabled for full fine-tuning.
-use_lora: true
-lora_r: 8
-lora_alpha: 16
-lora_dropout: 0.05
-lora_target_modules:
+max_length: 512         # max token sequence length; Waypoint-6m was pretrained at 512.
+pooling_strategy: last_token  # how to collapse [batch, seq, hidden] → [batch, hidden].
+filter_unk_taxa: true   # drop taxa not in the tokenizer vocab (else they'd become [UNK]).
+
+# --- Optimization ----------------------------------------------------------
+# AdamW hyperparameters + LR schedule. `warmup_steps` sets a linear ramp from 0
+# to `learning_rate` at the start of training, after which the LR decays. For
+# small datasets, drop warmup_steps to something like 50 so warmup finishes
+# well before early stopping fires.
+
+seed: 42                # deterministic seed for split, init, and shuffling.
+learning_rate: 3.0e-5   # peak LR after warmup; standard fine-tune value for small transformers.
+num_epochs: 100         # ceiling on epochs; early stopping usually stops well before this.
+batch_size: 32          # samples per gradient step.
+warmup_steps: 1000      # linear LR ramp-up steps from 0 to learning_rate at the start.
+weight_decay: 0.001     # L2 regularization strength on the weights.
+
+# --- Evaluation, logging, checkpointing, early stopping --------------------
+# How often to interrupt training to compute validation loss, log a training
+# row, save a checkpoint, and (if val loss hasn't improved for `patience` eval
+# steps) stop early. The training_log.csv / .html plots pick up every logged
+# row.
+
+eval_strategy: steps    # run eval + save every N steps ("steps"), every epoch, or never.
+eval_steps: 400         # optimizer steps between eval + checkpoint saves.
+logging_steps: 5        # optimizer steps between train-loss log rows.
+patience: 5             # eval steps with no improvement before early stopping.
+save_total_limit: 1     # keep at most this many recent checkpoints on disk.
+
+# --- LoRA (parameter-efficient fine-tuning) --------------------------------
+# When use_lora=true we don't update the base transformer weights directly —
+# instead small trainable rank-`r` adapter matrices get injected into the
+# attention projections. Trains ~1% of the parameters at ~10x less VRAM.
+# Adapters are merged back into the base model before saving so downstream
+# `waypoint embed` / `waypoint benchmark` see a plain HF checkpoint.
+
+use_lora: true          # false = full fine-tune of all base transformer weights.
+lora_r: 8               # rank of the adapter matrices; higher = more capacity.
+lora_alpha: 16          # LoRA scale factor; convention is alpha = 2 * r.
+lora_dropout: 0.05      # dropout inside each adapter.
+lora_target_modules:    # which submodules get LoRA-wrapped (GPT-2 attention: c_attn = fused Q/K/V, c_proj = output).
   - c_attn
   - c_proj
-lora_bias: none
-lora_fan_in_fan_out: true
+lora_bias: none         # whether to also train bias terms ("none", "all", or "lora_only").
+lora_fan_in_fan_out: true  # true for GPT-2-style Conv1D layouts (what Waypoint uses).
