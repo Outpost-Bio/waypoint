@@ -442,6 +442,15 @@ def run(args: argparse.Namespace) -> None:
 
     best_model_dir = output_dir / "best_model"
     best_model_dir.mkdir(exist_ok=True)
+    # If we fine-tuned with LoRA, merge the adapter weights back into the base
+    # transformer before saving. Otherwise `save_pretrained` on a PeftModel
+    # writes only `adapter_config.json` + `adapter_model.safetensors`, and
+    # downstream `AutoModel.from_pretrained(best_model_dir)` (used by
+    # `waypoint embed` and the benchmark loader) can't load it — the caller
+    # would need PeftModel.from_pretrained + the original base model.
+    if cfg["use_lora"]:
+        print("Merging LoRA adapter into the base transformer before saving ...")
+        model.base_model = model.base_model.merge_and_unload()
     model.base_model.save_pretrained(best_model_dir)
     tokenizer.save_pretrained(best_model_dir)
     if token_std_means is not None:

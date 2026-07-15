@@ -13,3 +13,5 @@ wheels/
 # Generated notebook figures
 figs/
 .DS_Store
+
+examples/webinar/artifacts/
