@@ -1,0 +1,37 @@
+# Shared fine-tune config for the two webinar demo notebooks.
+#
+# Same knobs work reasonably for both the regression demo (task 6 / mastrorilli)
+# and the classification demo (task 8 / roswall). For your own data, copy this
+# file next to it and tweak num_epochs / learning_rate / warmup_steps / batch_size
+# for your dataset size.
+
+split_column: null
+val_fraction: 0.15
+test_fraction: 0.15
+
+max_length: 512
+pooling_strategy: last_token
+filter_unk_taxa: true
+
+seed: 42
+learning_rate: 3.0e-5
+num_epochs: 100
+batch_size: 32
+warmup_steps: 1000
+weight_decay: 0.001
+eval_strategy: steps
+eval_steps: 400
+logging_steps: 5
+patience: 5
+save_total_limit: 1
+
+# Parameter-efficient fine-tuning. Leave disabled for full fine-tuning.
+use_lora: true
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.05
+lora_target_modules:
+  - c_attn
+  - c_proj
+lora_bias: none
+lora_fan_in_fan_out: true
