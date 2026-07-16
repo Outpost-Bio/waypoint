@@ -326,6 +326,24 @@ def evaluate(
         y_prob_list=y_prob if cfg["task_type"] == "classification" else None,
     )
     save_json(output_path, {"score": score, "metrics": metrics})
+
+    # Save raw per-sample predictions alongside the metrics JSON so downstream
+    # code (notebooks, dashboards) can plot true-vs-predicted without rerunning
+    # the model. One column pair per target: y_true_<target>, y_pred_<target>.
+    # For classification, an extra y_prob_<target>_<class> column per class.
+    preds_df = pd.DataFrame()
+    for i, target in enumerate(cfg["targets"]):
+        preds_df[f"y_true_{target}"] = y_true[i]
+        preds_df[f"y_pred_{target}"] = y_pred[i]
+        if y_prob is not None:
+            for c in range(y_prob[i].shape[1]):
+                preds_df[f"y_prob_{target}_class{c}"] = y_prob[i][:, c]
+    preds_path = output_path.with_name(
+        output_path.stem.replace("_metrics", "_predictions") + ".csv"
+    )
+    preds_df.to_csv(preds_path, index=False)
+    print(f"  Saved per-sample predictions to {preds_path}")
+
     return score, metrics
 
 
